@@ -46,12 +46,6 @@ import pandas as pd
 
 @pd.api.extensions.register_dataframe_accessor("cellesce")
 class CellesceDataFrame:
-    # def __init__(self,*args,attrs={},**kwargs):
-    #     super(CellesceDataFrame, self).__init__(*args,**kwargs)
-    #     self.attrs.update(attrs)
-    # @property
-    # def _constructor(self):
-    #     return CellesceDataFrame
     def __init__(self, df):
         self.df = df
 
@@ -110,12 +104,12 @@ class CellesceDataFrame:
     def grouped_median(self, group="ObjectNumber"):
         return self.df.groupby(level=self.df.cellesce.drop_from_index(group)).median()
 
-    # def bootstrap(self,groups,size,group="ObjectNumber"):
-    #     self.groupby(
-    #         level=list(set(self.attrs["index_headers"]) - {group})
-    #     ).median()
-    #     # random_sample, make n groups, median of each group
-    #     pass
+    def bootstrap(self,groups,size,group="ObjectNumber"):
+        self.groupby(
+            level=list(set(self.attrs["index_headers"]) - {group})
+        ).median()
+        # random_sample, make n groups, median of each group
+        pass
 
     def drop_sigma(self, sigma=5, axis=0):
         return self.df.mask(
@@ -220,8 +214,9 @@ class CellesceDataFrame:
         print(metrics.cohen_kappa_score(y_test, model.predict(X_test)))
         importance = pd.DataFrame(
             model.feature_importances_,
-            index=X_train.columns,
+            index=pd.Series(X_train.columns, name='Feature') ,
             columns=["Importance"],
+            
         ).sort_values(ascending=False, by="Importance")
         importance["Cumulative Importance"] = importance.cumsum()
         importance.attrs.update(self.df.attrs)
