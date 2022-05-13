@@ -7,9 +7,11 @@ from napari import layers
 from glob import glob
 from pathlib import Path
 from tqdm import tqdm
+
 # %%
-file = "data/_2019_cellesce/2019-05-20/190520_14.32.57_ISO49_Vemurafenib_0_37uM/Position_2/190520_14.32.57_Step_Size_+0.4_Wavelength_DAPI 452-45_Position_Position_2_ISO49_Vemurafenib_0_37uM/shapes.csv"
-glob_files = glob("data/**/shapes.csv",recursive=True)
+# file = "data/_2019_cellesce/2019-05-20/190520_14.32.57_ISO49_Vemurafenib_0_37uM/Position_2/190520_14.32.57_Step_Size_+0.4_Wavelength_DAPI 452-45_Position_Position_2_ISO49_Vemurafenib_0_37uM/shapes.csv"
+glob_files = glob("data/**/shapes.csv", recursive=True)
+# file = "2D_dapi/data/_2019_cellesce/2019-03-25/190325_15.17.25_ISO34_Dabrafenib_1_11uM/190325_15.17.25_Step_Size_-0.4_Wavelength_DAPI 452-45_ISO34_Dabrafenib_1_11uM/shapes.csv"
 # %%
 for glob_file in tqdm(glob_files):
     # print(folder)
@@ -18,9 +20,10 @@ for glob_file in tqdm(glob_files):
     try:
         df = pd.read_csv(glob_file)
     except:
-        print(f'Failed on {folder}')
+        print(f"Failed on {folder}")
         continue
-    image_shape = (2048, 2048)
+    image_shape = skimage.io.imread(f"{folder}/projection_XY_16_bit.tif.png").shape
+    # image_shape = (2048, 2048)
 
     # zero = df[df["index"] == 2].set_index("vertex-index")
     # mask = skimage.draw.polygon2mask(image_shape, zero[["axis-0", "axis-1"]])
@@ -35,11 +38,11 @@ for glob_file in tqdm(glob_files):
     for group_name, df_group in df.groupby("index"):
         points = df_group.set_index("vertex-index")[["axis-0", "axis-1"]]
         points_list.append(points)
-        mask = skimage.draw.polygon2mask(image_shape, points)*int(group_name)
+        mask = skimage.draw.polygon2mask(image_shape, points) * int(group_name)
         mask_list.append(mask)
-        instance = np.max(mask_list,axis=0)
-    skimage.io.imsave(f"{folder}/projection_XY_16_bit_manual_instance.png",instance)
-    skimage.io.imsave(f"{folder}/projection_XY_16_bit_manual_instance.tif",instance)
+        instance = np.max(mask_list, axis=0)
+    skimage.io.imsave(f"{folder}/projection_XY_16_bit_manual_instance.png", instance)
+    skimage.io.imsave(f"{folder}/projection_XY_16_bit_manual_instance.tif", instance)
 
     # %%
     # plt.imshow(instance)
@@ -61,7 +64,7 @@ for glob_file in tqdm(glob_files):
     # # sorted(l, key=lambda e: sum((a-b)**2 for a,b in zip(e, [2,5])))
     # plt.imshow(labels)
 
-    # # layers.Shapes().load_from   
+    # # layers.Shapes().load_from
     # # %%
     # out_file = "projection_XY_16_bit_manual_instance.tiff"
     # # %%
