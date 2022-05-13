@@ -1,0 +1,10 @@
+name: cellesce
+dependencies:
+- python
+- pandas
+- scikit-learn
+- matplotlib
+- seaborn
+- pip
+- pip:
+  - -e .
