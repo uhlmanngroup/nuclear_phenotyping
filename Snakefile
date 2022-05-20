@@ -34,7 +34,7 @@ EXT = ".tif"
 rule all:
 	input:
 		MODEL_OUT,
-        DATA_IN,
+        # DATA_IN,
         IMAGES_IN_DIR,
         expand("{input_images}.tif", input_images=IMAGES_IN)
 
