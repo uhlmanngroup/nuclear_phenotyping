@@ -1,0 +1,25 @@
+name: stardist
+channels:
+  - bjornfjohansson
+  - anaconda
+  - conda-forge
+  - defaults
+  - r
+  - bioconda
+dependencies:
+  - python   # or 2.7
+  - pims
+  - ipython
+  - mamba
+  - pip
+  - numpy
+  - tensorflow
+  - scikit-learn
+  - snakemake
+  - pip:
+    - ome-zarr
+    - stardist
+    # - splinedist
+    # - pims
+    # - git+https://github.com/uhlmanngroup/splinedist
+
