@@ -4,6 +4,7 @@ dependencies:
 - pandas
 - scikit-learn
 - matplotlib
+- cellprofiler
 - seaborn
 - pip
 - pip:
