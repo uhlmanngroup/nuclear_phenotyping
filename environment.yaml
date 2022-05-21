@@ -8,4 +8,4 @@ dependencies:
 - seaborn
 - pip
 - pip:
-  - -e .
+  - -e "../../."
