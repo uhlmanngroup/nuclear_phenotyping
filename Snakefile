@@ -31,6 +31,8 @@ EXT = ".tif"
 
 MODELS=["stardist","splinedist","unet"]
 MODELS=["stardist"]
+MODELS=["stardist","unet"]
+
 # /b6/58f8c7-0d88-424c-96bd-63d97210703c-a408
 # All is a special rule that takes in the last output of the pipeline
 
@@ -41,8 +43,9 @@ rule all:
         # DATA_IN,
         IMAGES_IN_DIR,
         "analysed/cellprofiler/stardist",
-        "analysed/cellprofiler/stardist/test.csv"
-        # expand("analysed/cellprofiler/stardist/test.csv",model=MODELS)
+        "analysed/cellprofiler/stardist/test.csv",
+        "analysed/cellprofiler/unet/test.csv",
+        expand("analysed/cellprofiler/{model}/test.csv",model=MODELS)
         # expand("analysed/cellprofiler/stardist/test.csv"),
         # expand("analysed/cellprofiler/stardist")
         # expand("{input_images}.tif", input_images=IMAGES_IN)
@@ -128,7 +131,28 @@ rule dist_inference:
         "
 
 
-def aggregate_input(wildcards):
+rule unet_inference:
+    input:
+        model=MODEL_OUT,
+        image_dir=IMAGES_IN_DIR,
+        images_in="data/cellesce_2d/{images_in}/projection_XY_16_bit.tif"
+    output:
+    #    thumb="analysed/unet_inference/{images_in}_thumb.png",
+       labels="analysed/unet_inference/{images_in}_labels.tif"
+    threads: 1
+    conda:
+        "unet/environment.yaml"
+    params:
+        script="unet/infer.py"
+    shell:
+        "python \
+           {params.script} \
+            --image_in='{input.images_in}' \
+            --labels='{output.labels}' \
+        "
+
+
+def aggregate_input_stardist(wildcards):
     checkpoints.get_image_data.get(**wildcards)
     images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
     # print(images_glob)
@@ -136,16 +160,28 @@ def aggregate_input(wildcards):
     # return expand("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif", images_in=images_glob)
     return expand("analysed/stardist_inference/{images_in}_labels.png", images_in=images_glob)
 
+
+
+def aggregate_input_unet(wildcards):
+    checkpoints.get_image_data.get(**wildcards)
+    # output = checkpoints.get_image_data.get(**wildcards)
+    images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
+    # print(images_glob)
+    # return images_glob
+    # return expand("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif", images_in=images_glob)
+    return expand("analysed/unet_inference/{images_in}_labels.tif", images_in=images_glob)
+
+
 # images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
 
 # print(images_glob)
 
-rule cellprofiler_csv:
+rule cellprofiler_csv_stardist:
     input:
         model=MODEL_OUT,
         # "analysed/stardist_inference/{images_in}.tif"
         # expand("analysed/stardist_inference/{images_in}.tif", images_in=images_glob)
-        agg=aggregate_input
+        agg=aggregate_input_stardist
     output:
         csv_dir=directory("analysed/cellprofiler/stardist"),
         csv="analysed/cellprofiler/stardist/test.csv"
@@ -153,12 +189,39 @@ rule cellprofiler_csv:
     conda:
         "cellprofiler/environment.yaml"
     shell:
-        "mkdir {output.csv_dir} \
-        touch {output.csv} \
-        # cellprofiler \
-        # -c -r -p cellprofiler/unet_cp4.cpproj.cppipe \
-        # -i {input} \
-        # -o {output} \
+        # "touch {output.csv}" 
+        # "bash  touch {output.csv}
+        # mkdir {output.csv_dir} 
+        # touch {output.csv} \
+        "cellprofiler \
+        -c -r -p cellprofiler/instance_cp4.cpproj.cppipe \
+        -i {input} \
+        -o {output} \
+        "
+
+
+
+rule cellprofiler_csv_unet:
+    input:
+        model=MODEL_OUT,
+        # "analysed/stardist_inference/{images_in}.tif"
+        # expand("analysed/stardist_inference/{images_in}.tif", images_in=images_glob)
+        agg=aggregate_input_unet
+    output:
+        csv_dir=directory("analysed/cellprofiler/unet"),
+        csv="analysed/cellprofiler/unet/test.csv"
+        # out=aggregate_input
+    conda:
+        "cellprofiler/environment.yaml"
+    shell:
+        # "touch {output.csv}" 
+        # "bash  touch {output.csv}
+        # mkdir {output.csv_dir} 
+        # touch {output.csv} \
+        "cellprofiler \
+        -c -r -p cellprofiler/unet_cp4.cpproj.cppipe \
+        -i {input} \
+        -o {output} \
         "
 
 
