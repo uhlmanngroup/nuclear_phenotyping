@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--image_in','--image_in',type=str, help='images_dir')
 parser.add_argument('--figure_out','--figure_out',type=str, help='figure_out')
 parser.add_argument('--model_path','--model_path',default="models",type=str, help='model')
-parser.add_argument('--labels_out','--labels_out',default="models",type=str, help='model')
+parser.add_argument('--labels_out','--labels_out',default="labels_out",type=str, help='labels_out')
 
 
 args = parser.parse_args()
@@ -53,7 +53,7 @@ axis_norm = (0,1)   # normalize channels independently
 if n_channel > 1:
     print("Normalizing image channels %s." % ('jointly' if axis_norm is None or 2 in axis_norm else 'independently'))
 
-model = StarDist2D(None, name='stardist', basedir='models')
+model = StarDist2D(None, name='stardist', basedir=model_path)
 
 img = normalize(X[0], 1,99.8, axis=axis_norm)
 labels, details = model.predict_instances(img)

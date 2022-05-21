@@ -39,8 +39,12 @@ rule all:
 	input:
 		MODEL_OUT,
         # DATA_IN,
-        # IMAGES_IN_DIR,
-        expand("analysed/{model}/test.csv",model=MODELS)
+        IMAGES_IN_DIR,
+        "analysed/cellprofiler/stardist",
+        "analysed/cellprofiler/stardist/test.csv"
+        # expand("analysed/cellprofiler/stardist/test.csv",model=MODELS)
+        # expand("analysed/cellprofiler/stardist/test.csv"),
+        # expand("analysed/cellprofiler/stardist")
         # expand("{input_images}.tif", input_images=IMAGES_IN)
         # "analysed/test.csv",
         # aggregate_input
@@ -65,7 +69,7 @@ rule dist_training:
 	output:
 	    directory(MODEL_OUT)
 	conda:
-	    "stardist.yaml"
+	    "stardist/environment.yaml"
 	shell:
 		"python \
             stardist/training.py \
@@ -138,17 +142,19 @@ def aggregate_input(wildcards):
 
 rule cellprofiler_csv:
     input:
+        model=MODEL_OUT,
         # "analysed/stardist_inference/{images_in}.tif"
         # expand("analysed/stardist_inference/{images_in}.tif", images_in=images_glob)
-        aggregate_input
+        agg=aggregate_input
     output:
-        csv_dir="analysed/cellprofiler",
-        csv="analysed/test.csv"
+        csv_dir=directory("analysed/cellprofiler/stardist"),
+        csv="analysed/cellprofiler/stardist/test.csv"
         # out=aggregate_input
     conda:
-        "cellprofiler.yaml"
+        "cellprofiler/environment.yaml"
     shell:
-        "touch {output.csv} \
+        "mkdir {output.csv_dir} \
+        touch {output.csv} \
         # cellprofiler \
         # -c -r -p cellprofiler/unet_cp4.cpproj.cppipe \
         # -i {input} \

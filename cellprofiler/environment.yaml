@@ -1,0 +1,8 @@
+name: cellprofiler
+dependencies:
+- python
+- pandas
+- scikit-learn
+- matplotlib
+- cellprofiler
+- seaborn
