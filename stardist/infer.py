@@ -30,6 +30,7 @@ parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--image_in','--image_in',type=str, help='images_dir')
 parser.add_argument('--figure_out','--figure_out',type=str, help='figure_out')
 parser.add_argument('--model_path','--model_path',default="models",type=str, help='model')
+parser.add_argument('--labels_out','--labels_out',default="models",type=str, help='model')
 
 
 args = parser.parse_args()
@@ -37,6 +38,7 @@ args = parser.parse_args()
 image_in = args.image_in
 model_path = args.model_path
 figure_out = args.figure_out
+labels_out = args.labels_out
 
 print(args)
 
@@ -61,6 +63,11 @@ plt.imshow(img if img.ndim==2 else img[...,0], clim=(0,1), cmap='gray')
 plt.imshow(labels, cmap=lbl_cmap, alpha=0.5)
 plt.axis('off')
 plt.savefig(figure_out)
+
+from skimage import io
+
+io.imsave(labels_out,labels)
+
 
 
 

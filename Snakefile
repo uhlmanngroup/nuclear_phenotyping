@@ -23,39 +23,29 @@ IMAGES_IN_DIR = DATA_IN+"/cellesce_2d"
 IMAGES_DIR = DATA_IN+"/Stardist/Training - Images"
 MASKS_DIR = DATA_IN+"/Stardist/Training - Masks"
 
-MODEL_OUT = "models"
+MODEL_OUT = "analysed/models"
 # INFERENCE_IMAGES_IN, = glob_wildcards("in/Stardist/Test - Images/{input_images}.tif")
 IMAGES_IN, = glob_wildcards("{input_images}.tif")
 
 EXT = ".tif"
 
+MODELS=["stardist","splinedist","unet"]
+MODELS=["stardist"]
 # /b6/58f8c7-0d88-424c-96bd-63d97210703c-a408
 # All is a special rule that takes in the last output of the pipeline
+
+
 rule all:
 	input:
 		MODEL_OUT,
         # DATA_IN,
-        IMAGES_IN_DIR,
-        expand("{input_images}.tif", input_images=IMAGES_IN)
+        # IMAGES_IN_DIR,
+        expand("analysed/{model}/test.csv",model=MODELS)
+        # expand("{input_images}.tif", input_images=IMAGES_IN)
+        # "analysed/test.csv",
+        # aggregate_input
+        
 
-rule download_image_data:
-    params:
-        link="https://zenodo.org/record/6566910/files/cellesce_2d.zip?download=1",
-        data_folder=DATA_IN
-    output:
-        "temp.zip"
-    shell:
-        "wget {params.link} -O {output}"
-
-rule get_image_data:
-    input:
-        "temp.zip"
-    params:
-        data_folder=DATA_IN
-    output:
-        directory(IMAGES_IN_DIR)
-    shell:
-        "unzip {input} -d {params.data_folder}"
 
 rule get_training_data:
     # input:
@@ -86,31 +76,84 @@ rule dist_training:
             --epochs=50 \
         "
 
+rule download_image_data:
+    params:
+        link="https://zenodo.org/record/6566910/files/cellesce_2d.zip?download=1",
+        data_folder=DATA_IN
+    output:
+        temp("temp.zip")
+    shell:
+        "wget {params.link} -O {output}"
+
+checkpoint get_image_data:
+    input:
+        "temp.zip"
+    params:
+        data_folder=DATA_IN
+    output:
+        directory(IMAGES_IN_DIR)
+    shell:
+        "unzip {input} -d {params.data_folder}"
+
+# def aggregate_input(wildcards):
+#     checkpoint_output = checkpoints.get_image_data.get().output[0]
+#     print(wildcards)
+#     return None
+#     # return expand("prot_tables/{c}.prot_table", 
+#     #     c=glob_wildcards(os.path.join(checkpoint_output, "{c}.gff")).c)
+
 rule dist_inference:
     input:
         model=MODEL_OUT,
-        images_in=IMAGES_IN_DIR+"/{images_in}.tif"
+        image_dir=IMAGES_IN_DIR,
+        images_in="data/cellesce_2d/{images_in}/projection_XY_16_bit.tif"
     output:
-       "analysed/stardist_inference/{images_in}.tif"
+       thumb="analysed/stardist_inference/{images_in}_thumb.png",
+       labels="analysed/stardist_inference/{images_in}_labels.png"
     conda:
-        "stardist.yaml"
+        "stardist/environment.yaml"
+    params:
+        script="stardist/infer.py"
     shell:
         "python \
-            stardist/infer.py \
+           {params.script} \
             --image_in='{input.images_in}' \
             --model_path='{input.model}' \
-            --figure_out='{output}' \
+            --figure_out='{output.thumb}' \
+            --labels='{output.labels}' \
         "
+
+
+def aggregate_input(wildcards):
+    checkpoints.get_image_data.get(**wildcards)
+    images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
+    # print(images_glob)
+    # return images_glob
+    # return expand("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif", images_in=images_glob)
+    return expand("analysed/stardist_inference/{images_in}_labels.png", images_in=images_glob)
+
+# images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
+
+# print(images_glob)
 
 rule cellprofiler_csv:
     input:
-        "analysed/{images_in}.png"
+        # "analysed/stardist_inference/{images_in}.tif"
+        # expand("analysed/stardist_inference/{images_in}.tif", images_in=images_glob)
+        aggregate_input
     output:
-        "analysed/{images_in}.csv"
+        csv_dir="analysed/cellprofiler",
+        csv="analysed/test.csv"
+        # out=aggregate_input
     conda:
         "cellprofiler.yaml"
     shell:
-        "cellprofiler -c -r -p cellprofiler/unet_cp4.cpproj.cppipe -o test.csv"
+        "touch {output.csv} \
+        # cellprofiler \
+        # -c -r -p cellprofiler/unet_cp4.cpproj.cppipe \
+        # -i {input} \
+        # -o {output} \
+        "
 
 
 # rule cellprofiler_csv_compile:
