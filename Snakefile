@@ -37,15 +37,26 @@ MODELS=["stardist","unet"]
 # All is a special rule that takes in the last output of the pipeline
 
 
+def aggregate_input_stardist(wildcards):
+    checkpoints.get_image_data.get(**wildcards)
+    images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
+    # print(images_glob)
+    # return images_glob
+    # return expand("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif", images_in=images_glob)
+    return expand("analysed/stardist_inference/{images_in}_labels.png", images_in=images_glob)
+
+
 rule all:
 	input:
 		MODEL_OUT,
         # DATA_IN,
         IMAGES_IN_DIR,
-        "analysed/cellprofiler/stardist",
-        "analysed/cellprofiler/stardist/test.csv",
+        # "analysed/cellprofiler/stardist",
+        # "analysed/cellprofiler/stardist/test.csv",
         "analysed/cellprofiler/unet/test.csv",
-        expand("analysed/cellprofiler/{model}/test.csv",model=MODELS)
+        # expand("analysed/cellprofiler/{model}/test.csv",model=MODELS),
+        # "analysed/cellprofiler/unet/test.csv"
+        # aggregate_input_unet,
         # expand("analysed/cellprofiler/stardist/test.csv"),
         # expand("analysed/cellprofiler/stardist")
         # expand("{input_images}.tif", input_images=IMAGES_IN)
@@ -148,29 +159,8 @@ rule unet_inference:
         "python \
            {params.script} \
             --image_in='{input.images_in}' \
-            --labels='{output.labels}' \
+            --labels={output.labels} \
         "
-
-
-def aggregate_input_stardist(wildcards):
-    checkpoints.get_image_data.get(**wildcards)
-    images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
-    # print(images_glob)
-    # return images_glob
-    # return expand("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif", images_in=images_glob)
-    return expand("analysed/stardist_inference/{images_in}_labels.png", images_in=images_glob)
-
-
-
-def aggregate_input_unet(wildcards):
-    checkpoints.get_image_data.get(**wildcards)
-    # output = checkpoints.get_image_data.get(**wildcards)
-    images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
-    # print(images_glob)
-    # return images_glob
-    # return expand("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif", images_in=images_glob)
-    return expand("analysed/unet_inference/{images_in}_labels.tif", images_in=images_glob)
-
 
 # images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
 
@@ -186,6 +176,8 @@ rule cellprofiler_csv_stardist:
         csv_dir=directory("analysed/cellprofiler/stardist"),
         csv="analysed/cellprofiler/stardist/test.csv"
         # out=aggregate_input
+    params:
+        cp_config="cellprofiler/instance_cp4.cpproj"
     conda:
         "cellprofiler/environment.yaml"
     shell:
@@ -194,37 +186,61 @@ rule cellprofiler_csv_stardist:
         # mkdir {output.csv_dir} 
         # touch {output.csv} \
         "cellprofiler \
-        -c -r -p cellprofiler/instance_cp4.cpproj.cppipe \
-        -i {input} \
-        -o {output} \
+         -c -r -p '{params.cp_config}' \
+        -i '{input}' \
+        -o '{output}'' \
         "
-
-
+# Use with rules
 
 rule cellprofiler_csv_unet:
     input:
         model=MODEL_OUT,
         # "analysed/stardist_inference/{images_in}.tif"
         # expand("analysed/stardist_inference/{images_in}.tif", images_in=images_glob)
-        agg=aggregate_input_unet
+        # agg=aggregate_input_unet,
+        # agg=expand("analysed/unet_inference/{images_in}_labels.tif", images_in=images_glob),
+        image_in="analysed/unet_inference/{images_in}_labels.tif"
     output:
-        csv_dir=directory("analysed/cellprofiler/unet"),
-        csv="analysed/cellprofiler/unet/test.csv"
+        csv_dir=directory("analysed/cellprofiler/unet/{images_in}"),
+        file_list = temp("analysed/unet_inference/{images_in}_file_list.txt")
+        # csv="analysed/cellprofiler/unet/test.csv"
         # out=aggregate_input
+    params:
+        cp_config="cellprofiler/unet_cp4.cpproj"
+    # container:
+        # "docker://cellprofiler/cellprofiler:4.2.1"
     conda:
         "cellprofiler/environment.yaml"
     shell:
-        # "touch {output.csv}" 
-        # "bash  touch {output.csv}
-        # mkdir {output.csv_dir} 
-        # touch {output.csv} \
-        "cellprofiler \
-        -c -r -p cellprofiler/unet_cp4.cpproj.cppipe \
-        -i {input} \
-        -o {output} \
-        "
+        """
+        echo "'{input.image_in}'" >> '{output.file_list}' && \
+        cellprofiler \
+        --run-headless \
+        --pipeline '{params.cp_config}' \
+        --file-list '{output.file_list}' \ 
+        --output-directory '{output.csv_dir}' \
+        --log-level DEBUG
+        """
+
+def aggregate_input_unet(wildcards):
+    checkpoints.get_image_data.get(**wildcards)
+    # output = checkpoints.get_image_data.get(**wildcards)
+    images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
+    # return images_glob
+    # print(images_glob)
+    # return images_glob
+    # return expand("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif", images_in=images_glob)
+    return expand("analysed/cellprofiler/unet/{images_in}", images_in=images_glob)
 
 
+rule cellprofiler_unet_merge:
+    input:
+        agg=aggregate_input_unet,
+        # csv_dir="analysed/cellprofiler/unet",
+    output:
+        csv="analysed/cellprofiler/unet/test.csv"
+    shell:
+        "touch {output}"
 # rule cellprofiler_csv_compile:
 #     input:
 #         "stardist_out/{images_in}.csv"
