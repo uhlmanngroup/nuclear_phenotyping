@@ -216,9 +216,9 @@ rule cellprofiler_csv_unet:
         echo "'{input.image_in}'" >> '{output.file_list}' && \
         cellprofiler \
         --run-headless \
+        -c -r -o '{output.csv_dir}' \
         --pipeline '{params.cp_config}' \
-        --file-list '{output.file_list}' \ 
-        --output-directory '{output.csv_dir}' \
+        --file-list '{output.file_list}' \
         --log-level DEBUG
         """
 
