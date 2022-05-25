@@ -64,11 +64,22 @@ parser.add_argument('--image_in','--image_in',type=str, help='images_dir')
 parser.add_argument('--figure_out','--figure_out',type=str, help='figure_out')
 parser.add_argument('--labels_out','--labels_out',default="labels_out",type=str, help='labels_out')
 
+parser.add_argument('--background_image','--background',default="background",type=str, help='background')
+parser.add_argument('--foreground_image','--foreground_image',default="foreground_image",type=str, help='foreground_image')
+parser.add_argument('--boundary_image','--boundary',default="boundary",type=str, help='boundary')
+parser.add_argument('--raw_image','--raw_image',default="raw_image",type=str, help='raw_image')
+
 
 args = parser.parse_args()
 
 image_in = args.image_in
 labels_out = args.labels_out
+
+background_image = args.background_image
+foreground_image = args.foreground_image
+boundary_image = args.boundary_image
+raw_image = args.raw_image
+
 f = image_in
 
 # os.environ["KERAS_BACKEND"] =  "tensorflow"
@@ -116,8 +127,15 @@ im_padded = np.pad(im,
 prediction = unet_nuclei.unet_classify(model, im_padded)
 
 # plt.imsave(filename+".png",prediction)
-# from skimage import io
+from skimage import io
 
+
+io.imsave(background_image,prediction[:, :, 0])
+io.imsave(foreground_image,prediction[:, :, 1])
+io.imsave(boundary_image,prediction[:, :, 2])
+io.imsave(raw_image,im_padded)
+
+im_padded
 # io.imsave(labels_out,prediction)
 
 imageio.mimwrite(

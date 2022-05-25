@@ -24,4 +24,4 @@ dependencies:
 # - mysqlclient=1.4.4
 # - sentry-sdk=0.18.0
 # - pip:
-#     - cellprofiler==4.2.1
+#     - git+https://github.com/CellProfiler/CellProfiler
