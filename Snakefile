@@ -4,6 +4,9 @@
 from snakemake.remote import AUTO
 from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
 import pandas as pd
+import os
+import dask.dataframe as dd
+
 FTP = FTPRemoteProvider(username="bsftp", password="bsftp1")
 ftp_path = "ftp-private.ebi.ac.uk/b6/58f8c7-0d88-424c-96bd-63d97210703c-a408"
 # ftp_path = "ftp-private.ebi.ac.uk/b6/58f8c7-0d88-424c-96bd-63d97210703c-a408/_2019_cellesce_uncropped/{image}.tif"
@@ -17,7 +20,7 @@ print(FTP.glob_wildcards(ftp_path))
 # FILE_OUT_QUALITY = "quality.txt"
 # FILE_OUT_QUALITY = "out/quality"
 
-CSV_VARIANTS=["FilteredNuclei","Image","IdentifySecondaryObjects","nuclei_objects"]
+CSV_VARIANTS=["FilteredNuclei","Image","nuclei_objects"]
 FEATURE_INCLUSIONS=["all","objects"]
 # Filename prefix in: unet_cp4_3_class.cpproj
 
@@ -38,8 +41,17 @@ IMAGES_IN, = glob_wildcards("{input_images}.tif")
 EXT = ".tif"
 
 MODELS=["stardist","splinedist","unet"]
-MODELS=["stardist"]
+# MODELS=["stardist"]
 MODELS=["stardist","unet"]
+MODELS=["splinedist","unet"]
+
+inference_segmentation_config={
+            "splinedist":"cellprofiler/instance_cp4.cpproj",
+            "stardist":"cellprofiler/instance_cp4.cpproj",
+            "unet":"cellprofiler/unet_cp4_3_class.cpproj",
+            }
+
+
 
 # /b6/58f8c7-0d88-424c-96bd-63d97210703c-a408
 # All is a special rule that takes in the last output of the pipeline
@@ -48,14 +60,15 @@ images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit
 # images_glob,cellprofiler_files = glob_wildcards("analysed/cellprofiler/unet/{images_in}/{cellprofiler_files}.csv")
 images_in, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
 images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
+renamed_images_glob, = glob_wildcards("analysed/data/{images}/")
 
 def aggregate_input_stardist(wildcards):
     checkpoints.get_image_data.get(**wildcards)
-    images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
+    images_glob, = glob_wildcards("data/cellesce_2d/{images}/projection_XY_16_bit.tif")
     # print(images_glob)
     # return images_glob
     # return expand("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif", images_in=images_glob)
-    return expand("analysed/stardist_inference/{images_in}/labels.png", images_in=images_glob)
+    return expand("analysed/stardist_inference/{images}/labels.png", images_in=images_glob)
 
 # print(
 #             expand("{feature_inclusions}_{csv_variants}.csv",
@@ -63,14 +76,28 @@ def aggregate_input_stardist(wildcards):
 #             csv_variants=CSV_VARIANTS)
 # )
 
+
+print(renamed_images_glob)
+
 rule all:
 	input:
 		MODEL_OUT,
         # DATA_IN,
         IMAGES_IN_DIR,
-        expand("analysed/cellprofiler/{feature_inclusions}_{csv_variants}.csv",
+        expand("analysed/cellprofiler/{model}/{feature_inclusions}_{csv_variants}.csv",
             feature_inclusions=FEATURE_INCLUSIONS,
-            csv_variants=CSV_VARIANTS)
+            csv_variants=CSV_VARIANTS,
+            model=MODELS),       
+        expand("analysed/cellprofiler/{images}/{model}/{feature_inclusions}_{csv_variants}.csv",
+                        allow_missing=True,
+                        images=renamed_images_glob,
+                        csv_variants=CSV_VARIANTS,
+                        feature_inclusions=FEATURE_INCLUSIONS,
+                        model=MODELS,
+                    )
+        # "analysed/data",
+        # expand("analysed/data/temp/{images_in}",images_in=images_glob)
+
 
 rule get_training_data:
     # input:
@@ -122,6 +149,19 @@ checkpoint get_image_data:
     shell:
         "unzip {input} -d {params.data_folder}"
 
+# Combine rules 
+rule move_data:
+    input:
+        "data/cellesce_2d/{images_in}/projection_XY_16_bit.tif"
+    output:
+        temp(touch("analysed/data/temp/{images_in}"))
+    params:
+        file_name=lambda wildcards: "analysed/data/"+(wildcards.images_in).replace('/','_').replace(' ','_')
+    shell:
+        """
+        cp '{input}' '{params.file_name}'
+        """
+
 # def aggregate_input(wildcards):
 #     checkpoint_output = checkpoints.get_image_data.get().output[0]
 #     print(wildcards)
@@ -133,10 +173,10 @@ rule dist_inference:
     input:
         model=MODEL_OUT,
         image_dir=IMAGES_IN_DIR,
-        images_in="data/cellesce_2d/{images_in}/projection_XY_16_bit.tif"
+        images="analysed/data/{images}"
     output:
-       thumb="analysed/stardist_inference/{images_in}_thumb.png",
-       labels="analysed/stardist_inference/{images_in}_labels.png"
+       thumb="analysed/stardist_inference/{images}_thumb.png",
+       labels="analysed/stardist_inference/{images}_labels.png"
     conda:
         "stardist/environment.yaml"
     params:
@@ -144,7 +184,7 @@ rule dist_inference:
     shell:
         "python \
            {params.script} \
-            --image_in='{input.images_in}' \
+            --image_in='{input.images}' \
             --model_path='{input.model}' \
             --figure_out='{output.thumb}' \
             --labels='{output.labels}' \
@@ -155,15 +195,15 @@ rule unet_inference:
     input:
         model=MODEL_OUT,
         image_dir=IMAGES_IN_DIR,
-        images_in="data/cellesce_2d/{images_in}/projection_XY_16_bit.tif"
+        images="analysed/data/{images}"
     output:
     #    thumb="analysed/unet_inference/{images_in}_thumb.png",
-        raw_image="analysed/unet_inference/{images_in}/raw.png",
-        labels="analysed/unet_inference/{images_in}/labels.tif",
-        background="analysed/unet_inference/{images_in}/background.png",
-        foreground="analysed/unet_inference/{images_in}/foreground.png",
-        boundary="analysed/unet_inference/{images_in}/boundary.png",
-        folder=directory("analysed/unet_inference/{images_in}")
+        raw_image="analysed/unet_inference/{images}/raw.png",
+        labels="analysed/unet_inference/{images}/labels.tif",
+        background="analysed/unet_inference/{images}/background.png",
+        foreground="analysed/unet_inference/{images}/foreground.png",
+        boundary="analysed/unet_inference/{images}/boundary.png",
+        folder=directory("analysed/unet_inference/{images}")
         # expand("analysed/unet_inference/{{images_in}}_{class}.png",
         #     )
     resources:
@@ -177,7 +217,7 @@ rule unet_inference:
         """
         python \
            {params.script} \
-            --image_in='{input.images_in}' \
+            --image_in='{input.images}' \
             --labels='{output.labels}' \
             --background_image='{output.background}' \
             --foreground_image='{output.foreground}' \
@@ -185,62 +225,98 @@ rule unet_inference:
             --raw_image='{output.raw_image}'\
         """
 
-# print(images_glob)
 
-rule cellprofiler_csv_stardist:
+
+rule splinedist_inference:
     input:
         model=MODEL_OUT,
-        # "analysed/stardist_inference/{images_in}.tif"
-        # expand("analysed/stardist_inference/{images_in}.tif", images_in=images_glob)
-        agg=aggregate_input_stardist
+        images="analysed/data/{images}",
     output:
-        csv_dir=directory("analysed/cellprofiler/stardist"),
-        csv="analysed/cellprofiler/stardist/test.csv"
-        # out=aggregate_input
-    params:
-        cp_config="cellprofiler/instance_cp4.cpproj"
+    #    thumb="analysed/unet_inference/{images_in}_thumb.png",
+        raw_image="analysed/splinedist_inference/{images}/raw.png",
+        instance="analysed/splinedist_inference/{images}/instance.png",
+        control_points="analysed/splinedist_inference/{images}/control_points.csv",
+        folder=directory("analysed/splinedist_inference/{images}/")
+        # expand("analysed/unet_inference/{{images_in}}_{class}.png",
+        #     )
+    resources:
+        mem_mb=64000
+    threads: 64
     conda:
-        "cellprofiler/environment.yaml"
+        "splinedist/environment.yaml"
+    params:
+        script="splinedist/infer.py",
+        model_name="model_16_dsb2018"
+        # model_path=
     shell:
-        # "touch {output.csv}" 
-        # "bash  touch {output.csv}
-        # mkdir {output.csv_dir} 
-        # touch {output.csv} \
-        "cellprofiler \
-         -c -r -p '{params.cp_config}' \
-        -i '{input}' \
-        -o '{output}' \
-        "
+        """
+        python \
+           {params.script} \
+            --image_in='{input.images}' \
+            --instance='{output.instance}' \
+            --control_points='{output.control_points}'\
+            --raw_image='{output.raw_image}'\
+            --model_path='{input.model}' \
+            --model_name='{params.model_name}'\
+        """
 
-rule cellprofiler_csv_unet:
+# print(images_glob)
+
+# rule cellprofiler_csv_stardist:
+#     input:
+#         model=MODEL_OUT,
+#         # "analysed/stardist_inference/{images_in}.tif"
+#         # expand("analysed/stardist_inference/{images_in}.tif", images_in=images_glob)
+#         agg=aggregate_input_stardist
+#     output:
+#         csv_dir=directory("analysed/cellprofiler/stardist"),
+#         csv="analysed/cellprofiler/stardist/test.csv"
+#         # out=aggregate_input
+#     params:
+#         cp_config="cellprofiler/instance_cp4.cpproj"
+#     conda:
+#         "cellprofiler/environment.yaml"
+#     shell:
+#         # "touch {output.csv}" 
+#         # "bash  touch {output.csv}
+#         # mkdir {output.csv_dir} 
+#         # touch {output.csv} \
+#         "cellprofiler \
+#          -c -r -p '{params.cp_config}' \
+#         -i '{input}' \
+#         -o '{output}' \
+#         "
+
+rule cellprofiler_csv:
     input:
-        image_in="analysed/unet_inference/{images_in}/raw.png",
-        # image_in="analysed/unet_inference/{images_in}/labels.tif",
-        background="analysed/unet_inference/{images_in}/background.png",
-        foreground="analysed/unet_inference/{images_in}/foreground.png",
-        boundary="analysed/unet_inference/{images_in}/boundary.png",
-        folder="analysed/unet_inference/{images_in}",
+        image_in="analysed/{model}_inference/{images}/raw.png",
+        # image_in="analysed/{model}_inference/{images_in}/labels.tif",
+        # background="analysed/{model}_inference/{images_in}/background.png",
+        # foreground="analysed/{model}_inference/{images_in}/foreground.png",
+        # boundary="analysed/{model}_inference/{images_in}/boundary.png",
+        folder="analysed/{model}_inference/{images}/",
     output:
         files=
-            expand("analysed/cellprofiler/unet/{{images_in}}/{feature_inclusions}_{csv_variants}.csv",
+            touch(expand("analysed/cellprofiler/{images}/{model}/{feature_inclusions}_{csv_variants}.csv",
                 allow_missing=True,
                 csv_variants=CSV_VARIANTS,
                 feature_inclusions=FEATURE_INCLUSIONS,
-            ),
-        folder = directory("analysed/cellprofiler/unet/{images_in}"),
+            )),
+        # folder = "analysed/cellprofiler/{images}/{model}/"
+        folder = directory("analysed/cellprofiler/{images}/{model}/"),
     resources:
         mem_mb=2000
     params:
-        cp_config="cellprofiler/unet_cp4_3_class.cpproj",
-        file_list=temp("analysed/cellprofiler/unet/{images_in}/file_list.txt"),
-        csv_dir=directory("analysed/unet_inference/{images_in}"),
+        cp_config=lambda wildcards: inference_segmentation_config[wildcards.model],
+        # file_list=temp("analysed/cellprofiler/{model}/{images_in}/file_list.txt"),
+        folder = directory("analysed/cellprofiler/{images}/{model}"),
+        csv_dir=directory("analysed/{model}_inference/{images}"),
     # container:
         # "docker://cellprofiler/cellprofiler:4.2.1"
     conda:
         "cellprofiler/environment.yaml"
     shell:
         """
-        echo "'{input.image_in}'" > '{params.file_list}' && \
         cellprofiler \
         --run-headless \
         -c -r \
@@ -255,32 +331,65 @@ rule cellprofiler_csv_unet:
 # images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
 
 
-def cellprofiler_unet_merge_input(wildcards):
+def cellprofiler_merge_input(wildcards):
     checkpoints.get_image_data.get(**wildcards)
-    images_glob, = glob_wildcards("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif")
+    images_glob, = glob_wildcards("analysed/data/{images}/")
     # print(images_glob)
     # return images_glob
     # return expand("data/cellesce_2d/{images_in}/projection_XY_16_bit.tif", images_in=images_glob)
-    return expand("analysed/cellprofiler/unet/{images_in}",images_in=images_glob)
+    return expand("analysed/cellprofiler/{images}/{{model}}/",images=images_glob)
 
+images_glob, = glob_wildcards("analysed/data/{images}/")
+# rule cellprofiler_merge:
+#     input:
+#         # files =
+#         #     expand("analysed/cellprofiler/{images}/{{model}}/{{feature_inclusions}}_{{csv_variants}}.csv",
+#         #         allow_missing=True,
+#         #         images=images_glob,
+#         #     ),
+#         folder = expand("analysed/cellprofiler/{images}/{{model}}/",
+#                     allow_missing=True,
+#                     images=renamed_images_glob),
+#         # files_in = expand("analysed/cellprofiler/{images}/{{model}}/{{feature_inclusions}}_{{csv_variants}}.csv",
+#         #         images=images_glob)
+#         # folder = cellprofiler_merge_input
+#         # folder = expand("analysed/cellprofiler/unet/{images_in}",images_in=images_glob),
+#     params:
+#         file_path = lambda wildcards, input: f'{input}/{wildcards.model}/{wildcards.feature_inclusions}_{wildcards.csv_variants}.csv',
+#         files = lambda wildcards, input: [s + f'/{wildcards.feature_inclusions}_{wildcards.csv_variants}.csv' for s in input],
+#     output:
+#         csv="analysed/cellprofiler/{model}/{feature_inclusions}_{csv_variants}.csv"
+#     run:
+#         try:
+#             df = pd.concat(map(pd.read_csv, params.files), ignore_index=True)
+#             # df = pd.concat(map(pd.read_csv, input.files_in), ignore_index=True)
+#             df.to_csv(output.csv)
+#         except Exception as e:
+#             print(e)
 
-rule cellprofiler_unet_merge:
+rule cellprofiler_merge:
     input:
-        # files =
-        #     expand("analysed/cellprofiler/unet/{images_in}/{{feature_inclusions}}_{{csv_variants}}.csv",
-        #         allow_missing=True,
-        #         images_in=images_glob,
-        #     ),
-        folder = cellprofiler_unet_merge_input
-        # folder = expand("analysed/cellprofiler/unet/{images_in}",images_in=images_glob),
-    params:
-        file_path = lambda wildcards, input: f'{input}/{wildcards.feature_inclusions}_{wildcards.csv_variants}.csv',
-        files = lambda wildcards, input: [s + f'/{wildcards.feature_inclusions}_{wildcards.csv_variants}.csv' for s in input],
+        folder = expand("analysed/cellprofiler/{images}/{{model}}/",
+                    allow_missing=True,
+                    images=renamed_images_glob),
     output:
-        csv="analysed/cellprofiler/{feature_inclusions}_{csv_variants}.csv"
+        csv="analysed/cellprofiler/{model}/{feature_inclusions}_{csv_variants}.csv"
+    resources:
+        mem_mb=16000
     run:
         try:
-            df = pd.concat(map(pd.read_csv, params.files), ignore_index=True)
-            df.to_csv(output.csv)
+            glob_string = f'analysed/cellprofiler/*/{wildcards.model}/{wildcards.feature_inclusions}_{wildcards.csv_variants}.csv'
+            # print(glob_string)
+            df = dd.read_csv(glob_string)  
+            # df = pd.concat(map(pd.read_csv, input.files_in), ignore_index=True)
+            df.compute().to_csv(output.csv)
         except Exception as e:
             print(e)
+
+rule control_points:
+    input:
+        folder = expand("analysed/cellprofiler/{images}/splinedist/",
+                    allow_missing=True,
+                    images=renamed_images_glob),
+    output:
+        csv="analysed/cellprofiler/splinedist/control_points.csv"
