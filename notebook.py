@@ -44,10 +44,29 @@ kwargs={
     "nuclei_path": "Secondary.csv"
 }
 
-kwargs = {
+kwargs_cellprofiler= {
     "data_folder": "analysed/210720 - ISO49+34 - projection_XY/unet_2022/project_XY_objects",
     "nuclei_path": "object_filteredNuclei.csv",
 }
+
+
+# kwargs_splinedist = {
+#     "data_folder": "analysed/cellprofiler",
+#     "nuclei_path": "objects_FilteredNuclei.csv",
+# }
+
+
+kwargs_splinedist = {
+    "data_folder": "analysed/cellesce_splinedist_controlpoints",
+    "nuclei_path": "Secondary.csv",
+}
+
+kwargs = kwargs_cellprofiler
+
+def save_csv(df,path):
+    df.to_csv(metadata(path))
+    return df
+
 
 results_folder = f'{kwargs["data_folder"]}/results'
 pathlib.Path(results_folder).mkdir(parents=True, exist_ok=True)
@@ -58,10 +77,12 @@ def metadata(x):
     return path
 # %%
 
+import random
 
 from cellesce import Cellesce
 df = Cellesce(**kwargs).get_data().cellesce.clean().cellesce.preprocess()
-
+rows,features = df.shape
+df = df.iloc[:,random.sample(range(0, features), 32)]
 
 print(
     f'Organoids: {df.cellesce.grouped_median("ObjectNumber").cellesce.simple_counts()}',
@@ -79,16 +100,25 @@ print(
 
 # importance = df.cellesce.feature_importances(variable="Cell").reset_index()
 
+# sns.barplot(
+#     y="Feature", x="Importance",
+#     data=df.cellesce.feature_importances(variable="Cell").reset_index()
+# )
+# plt.show()
+
+plt.figure(figsize=(5, 5))
 sns.barplot(
     y="Feature", x="Importance",
-    data=df.cellesce.feature_importances(variable="Cell").reset_index()
+    data=(df.cellesce.grouped_median()
+          .cellesce.feature_importances(variable="Cell")
+          .reset_index()
+          .pipe(save_csv,"importance_median_control_points.csv")
+          )
 )
-
-sns.barplot(
-    y="Feature", x="Importance",
-    data=df.cellesce.grouped_median().cellesce.feature_importances(variable="Cell").reset_index()
-)
-
+plt.tight_layout()
+plt.savefig(metadata("importance_median_control_points.pdf"))
+plt.show()
+# %%
 # sns.barplot(
 #     y="Feature", x="Cumulative Importance",
 #     data=df.cellesce.feature_importances(variable="Cell").reset_index()
@@ -116,14 +146,44 @@ plot = sns.catplot(
                 .cellesce.get_score_report("Cell")
                 .assign(**{"Population type": "Organoid"})
             ),
-        ]
-    ),
+        ])
+        .set_index("Metric")
+        .loc[['f1-score', 'recall','precision']]
+        .reset_index()
+        .pipe(save_csv,"Cell_predictions_image_vs_nuclei.csv"),
     sharey=False,
     kind="bar",
     col_wrap=2,
 ).set_xticklabels(rotation=45)
 if SAVE_FIG: plt.savefig(metadata("Cell_predictions_image_vs_nuclei.pdf"))
 plt.show()
+
+# %%
+
+
+plot = sns.catplot(
+    x="Kind",
+    y="Score",
+    # col="Metric",
+    # row="Cell",
+    ci=None,
+    hue="Metric",
+    data=(df.cellesce.grouped_median("ObjectNumber")
+            .cellesce.get_score_report("Cell")
+            .assign(**{"Population type": "Organoid"})
+            .set_index("Metric")
+            .loc[['f1-score', 'recall','precision']]
+            .reset_index()
+            .pipe(save_csv,"Cell_predictions_organoid.csv")
+            ),
+    sharey=False,
+    kind="bar",
+    # col_wrap=3,
+).set_xticklabels(rotation=45)
+
+if SAVE_FIG: plt.savefig(metadata("Cell_predictions_organoid.pdf"))
+plt.show()
+
 # %%
 plot = sns.catplot(
     # x="Kind",
