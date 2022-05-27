@@ -21,7 +21,7 @@ SAVE_CSV = True
 # data_folder = "analysed/210720 - ISO49+34 - projection_XY/unet_2022/project_XY_all"
 # data_folder = "analysed/210720 - ISO49+34 - projection_XY/unet_2022/project_XY_objects"
 
-pd.read_csv("analysed/_2019_cellesce_unet_splineparameters_aligned/raw/projection_XY/Secondary.csv")
+# pd.read_csv("analysed/_2019_cellesce_unet_splineparameters_aligned/raw/projection_XY/Secondary.csv")
 
 kwargs = {
     "data_folder": "analysed/210720 - ISO49+34 - projection_XY/unet_2022/project_XY_all",
@@ -60,6 +60,23 @@ kwargs_splinedist = {
     "data_folder": "analysed/cellesce_splinedist_controlpoints",
     "nuclei_path": "Secondary.csv",
 }
+
+kwargs_splinedist = {
+    "data_folder": "control_points",
+    "nuclei_path": "objects_FilteredNuclei.csv",
+}
+
+kwargs_cellprofiler = {
+    "data_folder": "analysed/cellprofiler/splinedist",
+    "nuclei_path": "objects_FilteredNuclei.csv",
+}
+
+
+kwargs_cellprofiler = {
+    "data_folder": "analysed/cellprofiler/splinedist_32",
+    "nuclei_path": "objects_FilteredNuclei.csv",
+}
+
 
 kwargs = kwargs_cellprofiler
 
