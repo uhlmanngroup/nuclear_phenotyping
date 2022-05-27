@@ -72,13 +72,13 @@ kwargs_cellprofiler = {
 }
 
 
-kwargs_cellprofiler = {
-    "data_folder": "analysed/cellprofiler/splinedist_32",
-    "nuclei_path": "objects_FilteredNuclei.csv",
-}
+# kwargs_cellprofiler = {
+#     "data_folder": "analysed/cellprofiler/splinedist_32",
+#     "nuclei_path": "objects_FilteredNuclei.csv",
+# }
 
-
-kwargs = kwargs_cellprofiler
+kwargs = kwargs_splinedist
+# kwargs = kwargs_cellprofiler
 
 def save_csv(df,path):
     df.to_csv(metadata(path))
@@ -99,7 +99,7 @@ import random
 from cellesce import Cellesce
 df = Cellesce(**kwargs).get_data().cellesce.clean().cellesce.preprocess()
 rows,features = df.shape
-df = df.iloc[:,random.sample(range(0, features), 32)]
+# df = df.iloc[:,random.sample(range(0, features), 32)]
 
 print(
     f'Organoids: {df.cellesce.grouped_median("ObjectNumber").cellesce.simple_counts()}',
@@ -172,6 +172,7 @@ plot = sns.catplot(
     kind="bar",
     col_wrap=2,
 ).set_xticklabels(rotation=45)
+plt.tight_layout()
 if SAVE_FIG: plt.savefig(metadata("Cell_predictions_image_vs_nuclei.pdf"))
 plt.show()
 
@@ -197,7 +198,7 @@ plot = sns.catplot(
     kind="bar",
     # col_wrap=3,
 ).set_xticklabels(rotation=45)
-
+plt.tight_layout()
 if SAVE_FIG: plt.savefig(metadata("Cell_predictions_organoid.pdf"))
 plt.show()
 
@@ -219,6 +220,7 @@ plot = sns.catplot(
     kind="bar",
     col_wrap=2,
 ).set_xticklabels(rotation=45)
+plt.tight_layout()
 if SAVE_FIG: plt.savefig(metadata("Drug_predictions_per_organoid.pdf"))
 plt.show()
 # %%
@@ -237,6 +239,7 @@ sns.catplot(
         .cellesce.groupby_counts("ImageNumber")
     ).reset_index(name="Organoids"),
 )
+plt.tight_layout()
 if SAVE_FIG: plt.savefig(metadata("Organoid_Summary.pdf"))
 plt.show()
 # %%
@@ -252,6 +255,7 @@ sns.catplot(
     data=(df.cellesce.groupby_counts("ObjectNumber"))
     .reset_index(name="Nuclei"),
 )
+plt.tight_layout()
 if SAVE_FIG: plt.savefig(metadata("Nuclei_Summary.pdf"))
 plt.show()
 # %%
