@@ -77,7 +77,7 @@ def aggregate_input_stardist(wildcards):
 # )
 
 
-print(renamed_images_glob)
+# print(renamed_images_glob)
 
 rule all:
 	input:
@@ -378,11 +378,14 @@ rule cellprofiler_merge:
         mem_mb=16000
     run:
         try:
-            glob_string = f'analysed/cellprofiler/*/{wildcards.model}/{wildcards.feature_inclusions}_{wildcards.csv_variants}.csv'
-            # print(glob_string)
-            df = dd.read_csv(glob_string)  
+            glob_string = f'analysed/cellprofiler/*cellesce*/{wildcards.model}/{wildcards.feature_inclusions}_{wildcards.csv_variants}.csv'
+            print(glob_string)
+            df = dd.read_csv(glob_string)
+            print(df)
             # df = pd.concat(map(pd.read_csv, input.files_in), ignore_index=True)
-            df.compute().to_csv(output.csv)
+            df = df.compute()
+            df["ImageNumber"] = df.groupby("PathName_image").cumcount()+1
+            df.to_csv(output.csv,index=False)
         except Exception as e:
             print(e)
 
