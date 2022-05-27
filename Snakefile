@@ -6,7 +6,10 @@ from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
 import pandas as pd
 import os
 import dask.dataframe as dd
+import pandas as pd
 
+
+# df = pd.concat(map(pd.read_csv, input.files_in), ignore_index=True)
 FTP = FTPRemoteProvider(username="bsftp", password="bsftp1")
 ftp_path = "***REMOVED***"
 # ftp_path = "***REMOVED***/_2019_cellesce_uncropped/{image}.tif"
@@ -50,8 +53,6 @@ inference_segmentation_config={
             "stardist":"cellprofiler/instance_cp4.cpproj",
             "unet":"cellprofiler/unet_cp4_3_class.cpproj",
             }
-
-
 
 # /b6/58f8c7-0d88-424c-96bd-63d97210703c-a408
 # All is a special rule that takes in the last output of the pipeline
@@ -381,11 +382,13 @@ rule cellprofiler_merge:
             glob_string = f'analysed/cellprofiler/*cellesce*/{wildcards.model}/{wildcards.feature_inclusions}_{wildcards.csv_variants}.csv'
             print(glob_string)
             df = dd.read_csv(glob_string)
+
             print(df)
             # df = pd.concat(map(pd.read_csv, input.files_in), ignore_index=True)
             df = df.compute()
-            df["ImageNumber"] = df.groupby("PathName_image").cumcount()+1
+            df["ImageNumber"] = pd.factorize(df["PathName_image"])[0]
             df.to_csv(output.csv,index=False)
+            
         except Exception as e:
             print(e)
 
