@@ -13,7 +13,7 @@ import pathlib
 import random
 
 sns.set()
-from cellesce import Cellesce, CellesceDataFrame
+from cellesce import Cellesce
 
 VARIABLES = ["Conc /uM", "Date", "Drug"]
 SAVE_FIG = True
@@ -94,7 +94,7 @@ def metadata(x):
     print(path)
     return path
 # %%
-
+from sklearn.metrics.pairwise import euclidean_distances
 from cellesce import Cellesce
 df_splinedist = (Cellesce(**kwargs_splinedist)
             .get_data()
@@ -103,6 +103,29 @@ df_splinedist = (Cellesce(**kwargs_splinedist)
             .assign(Features="Spline")
             .set_index(['Features'],append=True)
             )
+
+
+# distogram.flatten()
+# distogram = sklearn.metrics.pairwise.euclidean_distances(df.iloc[[0]].T)
+df_sorted = (df_splinedist.reindex(np.array(sorted(df_splinedist.columns.astype(np.int))).astype(np.str), axis=1))
+df_dist = (df_sorted
+            .apply(lambda x: euclidean_distances(np.array(x).reshape(-1, 1))
+            .flatten(),axis=1,result_type="expand"))
+df_dist = (df_sorted
+            .apply(lambda x: euclidean_distances(np.array([x[0::2],x[1::2]]).T)
+            .flatten(),axis=1,result_type="expand"))
+
+df_dist = (df_sorted
+            .apply(lambda x: np.tril(euclidean_distances(np.array([x[0::2],x[1::2]]).T)).flatten()
+            .flatten(),axis=1,result_type="expand")
+            .replace(0,np.nan)
+            .dropna(axis=1)
+            )
+df_dist.columns = df_dist.columns.astype(str)
+# df_dist = (df_sorted
+#             .apply(lambda x: euclidean_distances(np.array([x[0::2],x[1::2]]).T,[[0,0]])
+#             .flatten(),axis=1,result_type="expand"))
+df_splinedist = df_dist
 rows,features = df_splinedist.shape
 df_cellprofiler = (Cellesce(**kwargs_cellprofiler)
                 .get_data()
@@ -110,8 +133,9 @@ df_cellprofiler = (Cellesce(**kwargs_cellprofiler)
                 .cellesce.clean()
                 .assign(Features="Cellprofiler")
                 .set_index(['Features'],append=True)
-                .sample(32,axis=1,random_state=42)
+                # .sample(32,axis=1,random_state=42)
                 )
+df_cellprofiler.columns = df_cellprofiler.columns.str.replace("AreaShape_","")
 df = pd.concat([df_cellprofiler,df_splinedist])
 # df = df.iloc[:,random.sample(range(0, features), 32)]
 
@@ -119,9 +143,6 @@ print(
     f'Organoids: {df.cellesce.grouped_median("ObjectNumber").cellesce.simple_counts()}',
     f"Nuclei: {df.cellesce.simple_counts()}",
 )
-
-
-from IPython.display import display
 
 upper = np.nanmean(df.values.flatten()) + 2 * np.nanstd(df.values.flatten())
 lower = np.nanmean(df.values.flatten()) - 2 * np.nanstd(df.values.flatten())
@@ -164,27 +185,29 @@ def df_to_fingerprints_facet(*args,**kwargs):
 sns.set()
 g = sns.FacetGrid(df.reset_index(level=["Cell","Features"])
                 ,col="Features",row="Cell",
-                height=2, aspect=1.61,sharey=False)
+                height=2, aspect=1.61,sharey=False,sharex=False)
 cax = g.fig.add_axes([1.015,0.13, 0.015, 0.8])
 g.map_dataframe(df_to_fingerprints_facet,"Features","Nuclei","Features","Cell",
                     cmap="Spectral",cbar=True,
                     vmax=upper,vmin=lower)
-
 plt.colorbar(cax =cax)
+plt.savefig(metadata("fingerprints.pdf"),bbox_inches='tight')
+plt.show()
 # %%
 
 sns.catplot( 
     y="Feature", x="Importance",col="Features",sharey=False,kind="bar",
-    aspect=1/2,height=6,
+    aspect=1/3,height=12.5,
     data=(
         (df.groupby(level="Features")
             .apply(lambda df:
              df.cellesce.grouped_median().dropna(axis=1)
-                .cellesce.feature_importances(variable="Cell")))
+                .cellesce.feature_importances(variable="Cell"))
+        )
         .reset_index()
         .pipe(save_csv,"importance_median_control_points.csv")
           )
-).set(xlim=(0, 0.1))
+)
 # plt.tight_layout()
 plt.savefig(metadata("importance_median_control_points.pdf"))
 plt.show()
@@ -197,37 +220,85 @@ plt.show()
 
 
 # %% Could do better with median per imagenumber
+#     data=(
+#         pd.concat(
+#         [(
+#             df.cellesce.grouped_median("ObjectNumber")
+#             .cellesce.get_score_report("Cell")
+#             .assign(**{"Population type": "Organoid"})
+#             .set_index("Metric")
+#             .loc[['f1-score', 'recall','precision']]
+#             .reset_index()
+#             .assign(Fold=fold)
+#             .pipe(save_csv,"Cell_predictions_organoid.csv")
+#             )
+#         for fold in range(5)]
+#     )),
+# data =  pd.concat([
+#         (pd.concat(
+#         [
+#             (
+#                 (df.groupby(level="Features")
+#                  .apply(lambda df:
+#                     df.dropna(axis=1)
+#                     .cellesce.get_score_report(variable="Cell")))
+#                 .assign(**{"Population type": "Nuclei"})
+#             ),
+#             (
+#                 (df.groupby(level="Features")
+#                  .apply(lambda df:
+#                     df.cellesce.grouped_median().dropna(axis=1)
+#                     .cellesce.get_score_report(variable="Cell")))
+#                 .assign(**{"Population type": "Organoid"})
+#             ),
+#         ])
+#         .reset_index()
+#         .set_index("Metric")
+#         .loc[['f1-score', 'recall','precision']])
+#         .reset_index()
+#         .assign(Fold=fold) for fold in range(5)
+#         ]).pipe(save_csv,"Cell_predictions_image_vs_nuclei.csv")
+# %%
+import warnings
+from tqdm import tqdm 
+warnings.filterwarnings("ignore")
+data_list = []
+for fold in tqdm(range(5)):
+    print(f'Fold {fold}')
+    df_temp = (pd.concat(
+            [
+                (
+                    (df.groupby(level="Features")
+                    .apply(lambda df:
+                        df.dropna(axis=1)
+                        .cellesce.get_score_report(variable="Cell")))
+                    .assign(**{"Population type": "Nuclei"})
+                ),
+                (
 
-data = ((pd.concat(
-        [
-            (
-                (df.groupby(level="Features")
-                 .apply(lambda df:
-                    df.dropna(axis=1)
-                    .cellesce.get_score_report(variable="Cell")))
-                .assign(**{"Population type": "Nuclei"})
-            ),
-            (
-                (df.groupby(level="Features")
-                 .apply(lambda df:
-                    df.cellesce.grouped_median().dropna(axis=1)
-                    .cellesce.get_score_report(variable="Cell")))
-                .assign(**{"Population type": "Organoid"})
-            ),
-        ])
-        .reset_index()
-        .set_index("Metric")
-        .loc[['f1-score', 'recall','precision']])
-        .reset_index()
-        .pipe(save_csv,"Cell_predictions_image_vs_nuclei.csv"))
+                    (df.groupby(level="Features")
+                    .apply(lambda df:
+                        df.cellesce.grouped_median().dropna(axis=1)
+                        .cellesce.get_score_report(variable="Cell")))
+                    .assign(**{"Population type": "Organoid"})
+                ),
+            ])
+            .reset_index()
+            .set_index("Metric")
+            .loc[['f1-score', 'recall','precision']]
+            .reset_index()
+            .assign(Fold=fold))
+    data_list.append(df_temp)
 
+data = pd.concat(data_list).pipe(save_csv,"Cell_predictions_image_vs_nuclei.csv")
+# %%
 plot = sns.catplot(
     aspect=1.2,height=3,
     x="Kind",
     y="Score",
     col="Metric",
     row="Features",
-    ci=None,
+    # ci=None,
     hue="Population type",
     data=data,
     sharey=False,
@@ -242,12 +313,14 @@ plot = sns.catplot(
     x="Features",
     y="Score",
     col="Metric",
-    row="Kind",
-    ci=None,
+    hue="Kind",
+    # ci=None,
     data=data.set_index("Population type").loc["Organoid"],
     sharey=False,
     kind="bar"
 ).set_xticklabels(rotation=45).set(ylim=(0, 1))
 # plt.tight_layout()
-if SAVE_FIG: plt.savefig(metadata("Cell_predictions_organoid.pdf"))
+if SAVE_FIG: plt.savefig(metadata("Cell_predictions_organoid.pdf"),bbox_inches='tight')
 plt.show()
+
+# %%
