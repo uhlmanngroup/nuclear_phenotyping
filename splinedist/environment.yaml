@@ -7,7 +7,7 @@ channels:
   # - nvidia
 dependencies:
   - conda
-  - python
+  - python=3.8
   - cudatoolkit
   - pip=21
   - pandas
@@ -42,6 +42,6 @@ dependencies:
   # - nccl
   # - nvidia-ml
   - pip:
-    - stardist==0.6.2
     # - -e git+https://github.com/ctr26/splinedist.git#egg=splinedist
     - -e "../../splinedist/splinedist"
+    - stardist==0.6.2
