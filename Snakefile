@@ -9,12 +9,12 @@ import dask.dataframe as dd
 import pandas as pd
 
 
-# df = pd.concat(map(pd.read_csv, input.files_in), ignore_index=True)
-FTP = FTPRemoteProvider(username="bsftp", password="bsftp1")
-ftp_path = "***REMOVED***"
-# ftp_path = "***REMOVED***/_2019_cellesce_uncropped/{image}.tif"
-# print(FTP)
-print(FTP.glob_wildcards(ftp_path))
+# # df = pd.concat(map(pd.read_csv, input.files_in), ignore_index=True)
+# FTP = FTPRemoteProvider(username="bsftp", password="bsftp1")
+# ftp_path = "***REMOVED***"
+# # ftp_path = "***REMOVED***/_2019_cellesce_uncropped/{image}.tif"
+# # print(FTP)
+# print(FTP.glob_wildcards(ftp_path))
 
 # import pandas as pd
 # FILE = "in/Stardist/Test - Images/cell migration R1 - Position 58_XY1562686154_Z0_T00_C1-image76.tif"
@@ -368,11 +368,15 @@ images_glob, = glob_wildcards("analysed/data/{images}/")
 #         except Exception as e:
 #             print(e)
 
+def cellprofiler_merge(wildcards):
+    images, = glob_wildcards("analysed/data/{images}")
+    return expand("analysed/cellprofiler/{images}/{{model}}/",
+                    allow_missing=True,
+                    images=images)
+
 rule cellprofiler_merge:
     input:
-        folder = expand("analysed/cellprofiler/{images}/{{model}}/",
-                    allow_missing=True,
-                    images=renamed_images_glob),
+        folder = cellprofiler_merge
     output:
         csv="analysed/cellprofiler/{model}/{feature_inclusions}_{csv_variants}.csv"
     resources:
@@ -392,10 +396,10 @@ rule cellprofiler_merge:
         except Exception as e:
             print(e)
 
-rule control_points:
-    input:
-        folder = expand("analysed/cellprofiler/{images}/splinedist/",
-                    allow_missing=True,
-                    images=renamed_images_glob),
-    output:
-        csv="analysed/cellprofiler/splinedist/control_points.csv"
+# rule control_points:
+#     input:
+#         folder = expand("analysed/cellprofiler/{images}/splinedist/",
+#                     allow_missing=True,
+#                     images=renamed_images_glob),
+#     output:
+#         csv="analysed/cellprofiler/splinedist/control_points.csv"
