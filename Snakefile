@@ -80,22 +80,34 @@ def aggregate_input_stardist(wildcards):
 
 # print(renamed_images_glob)
 
+
+def aggregate_decompress_images(wildcards):
+    checkpoints.get_image_data.get(**wildcards)
+    images_raw, = glob_wildcards(
+        "data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif")
+    images = [i.replace('/','_').replace(' ','_') for i in images_raw]
+    checkpoints.move_data.get(images_raw=images_raw)
+    return expand("analysed/data/{images}", images=images)
+
+
 rule all:
 	input:
 		MODEL_OUT,
         # DATA_IN,
         IMAGES_IN_DIR,
+        # "analysed/data/{images}",
+        aggregate_decompress_images,
         expand("analysed/cellprofiler/{model}/{feature_inclusions}_{csv_variants}.csv",
             feature_inclusions=FEATURE_INCLUSIONS,
             csv_variants=CSV_VARIANTS,
             model=MODELS),       
-        expand("analysed/cellprofiler/{images}/{model}/{feature_inclusions}_{csv_variants}.csv",
-                        allow_missing=True,
-                        images=renamed_images_glob,
-                        csv_variants=CSV_VARIANTS,
-                        feature_inclusions=FEATURE_INCLUSIONS,
-                        model=MODELS,
-                    )
+        # expand("analysed/cellprofiler/{images}/{model}/{feature_inclusions}_{csv_variants}.csv",
+        #                 allow_missing=True,
+        #                 images=renamed_images_glob,
+        #                 csv_variants=CSV_VARIANTS,
+        #                 feature_inclusions=FEATURE_INCLUSIONS,
+        #                 model=MODELS,
+        #             )
         # "analysed/data",
         # expand("analysed/data/temp/{images_in}",images_in=images_glob)
 
@@ -151,17 +163,46 @@ checkpoint get_image_data:
         "unzip {input} -d {params.data_folder}"
 
 # Combine rules 
-rule move_data:
+checkpoint move_data:
     input:
-        "data/cellesce_2d/{images_in}/projection_XY_16_bit.tif"
-    output:
-        temp(touch("analysed/data/temp/{images_in}"))
+        "data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif"
+    # output:
+        # "data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif",
+        # images = "analysed/data/{images}"
     params:
         file_name=lambda wildcards: "analysed/data/"+(wildcards.images_in).replace('/','_').replace(' ','_')
     shell:
         """
         cp '{input}' '{params.file_name}'
         """
+
+
+# def aggregate_decompress_images_raw(wildcards):
+#     checkpoints.get_image_data.get(**wildcards)
+#     images_raw, = glob_wildcards(
+#         "data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif")
+#     return expand("data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif",
+#         images_raw=images_raw)
+
+# checkpoint aggregate_decompress_images_raw:
+#     input: aggregate_decompress_images_raw
+#     output: temp("aggregate_decompress_images_raw.flag")
+#     shell:'''
+#     touch {output}
+#     '''
+
+# def aggregate_decompress_images(wildcards):
+#     checkpoints.aggregate_decompress_images_raw.get(**wildcards)
+#     return "analysed/data/"+(wildcards.images_in).replace('/','_').replace(' ','_')
+
+
+
+# checkpoint aggregate_decompress_images:
+#     input: aggregate_decompress_images
+#     output: temp("aggregate_decompress_images.flag")
+#     shell:'''
+#     touch {output}
+#     '''
 
 # def aggregate_input(wildcards):
 #     checkpoint_output = checkpoints.get_image_data.get().output[0]
