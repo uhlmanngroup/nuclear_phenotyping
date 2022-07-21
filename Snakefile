@@ -135,7 +135,7 @@ rule dist_training:
 		images_dir=IMAGES_DIR,
 		masks_dir=MASKS_DIR
 	output:
-	    directory(MODEL_OUT)
+	    directory(MODEL_OUT+"/stardist")
 	conda:
 	    "stardist/environment.yaml"
     # resources:
