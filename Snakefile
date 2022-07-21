@@ -226,7 +226,7 @@ rule dist_inference:
     input:
         model=MODEL_OUT,
         image_dir=IMAGES_IN_DIR,
-        images="analysed/data/{images}"
+        images="analysed/data/images/{images}"
     output:
        thumb="analysed/stardist_inference/{images}_thumb.png",
        labels="analysed/stardist_inference/{images}_labels.png"
@@ -248,7 +248,7 @@ rule unet_inference:
     input:
         model=MODEL_OUT,
         image_dir=IMAGES_IN_DIR,
-        images="analysed/data/{images}"
+        images="analysed/data/images/{images}.tif"
     output:
     #    thumb="analysed/unet_inference/{images_in}_thumb.png",
         raw_image="analysed/unet_inference/{images}/raw.png",
@@ -283,7 +283,7 @@ rule unet_inference:
 rule splinedist_inference:
     input:
         model=MODEL_OUT,
-        images="analysed/data/{images}",
+        images="analysed/data/images/{images}.tif",
     output:
     #    thumb="analysed/unet_inference/{images_in}_thumb.png",
         raw_image="analysed/splinedist_inference/{images}/raw.png",
