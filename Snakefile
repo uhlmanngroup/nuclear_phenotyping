@@ -86,8 +86,8 @@ def aggregate_decompress_images(wildcards):
     images_raw, = glob_wildcards(
         "data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif")
     images = [i.replace('/','_').replace(' ','_') for i in images_raw]
-    checkpoints.move_data.get(images_raw=images_raw)
-    return expand("analysed/data/{images}", images=images)
+    # checkpoints.move_data.get(images_raw=images_raw,images=images,**wildcards)
+    return expand("analysed/data/images/temp/{images_raw}/projection_XY_16_bit.chkpt", images_raw=images_raw)
 
 
 rule all:
@@ -173,17 +173,21 @@ checkpoint get_image_data:
 checkpoint move_data:
     input:
         "data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif"
-    # output:
-        # "data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif",
-        # images = "analysed/data/{images}"
+    output:
+        # images = "analysed/data/{images}",
+        checkpoint="analysed/data/images/temp/{images_raw}/projection_XY_16_bit.chkpt"
+        # folder="analysed/data/images/"
     params:
-        file_name=lambda wildcards: "analysed/data/"+(wildcards.images_in).replace('/','_').replace(' ','_')
+        file_name=lambda wildcards: "analysed/data/images/"+(wildcards.images_raw).replace('/','_').replace(' ','_')+'.tif'
     shell:
         """
-        cp '{input}' '{params.file_name}'
+        cp -n '{input}' '{params.file_name}'
+        touch '{output.checkpoint}'
         """
 
-
+checkpoint confirm_data:
+    input:
+        aggregate_decompress_images
 # def aggregate_decompress_images_raw(wildcards):
 #     checkpoints.get_image_data.get(**wildcards)
 #     images_raw, = glob_wildcards(
