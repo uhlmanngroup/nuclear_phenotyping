@@ -431,7 +431,8 @@ rule cellprofiler_merge:
             print(df)
             # df = pd.concat(map(pd.read_csv, input.files_in), ignore_index=True)
             df = df.compute()
-            df["ImageNumber"] = pd.factorize(df["PathName_image"])[0]
+            if "PathName_image" in df.columns:
+                df["ImageNumber"] = pd.factorize(df["PathName_image"])[0]
             df.to_csv(output.csv,index=False)
             
         except Exception as e:
