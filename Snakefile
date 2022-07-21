@@ -349,12 +349,17 @@ rule cellprofiler_csv:
         # boundary="analysed/{model}_inference/{images_in}/boundary.png",
         folder="analysed/{model}_inference/{images}/",
     output:
-        files=
-            touch(expand("analysed/cellprofiler/{images}/{model}/{feature_inclusions}_{csv_variants}.csv",
-                allow_missing=True,
-                csv_variants=CSV_VARIANTS,
-                feature_inclusions=FEATURE_INCLUSIONS,
-            )),
+        # files=
+        #     touch(expand("analysed/cellprofiler/{images}/{model}/{feature_inclusions}_{csv_variants}.csv",
+        #         allow_missing=True,
+        #         csv_variants=CSV_VARIANTS,
+        #         feature_inclusions=FEATURE_INCLUSIONS,
+        #     )),
+        files = expand(
+            "analysed/cellprofiler/{images}/{model}/{feature_inclusions}_{csv_variants}.csv",
+            allow_missing=True,
+            feature_inclusions=FEATURE_INCLUSIONS,
+            csv_variants=CSV_VARIANTS),
         # folder = "analysed/cellprofiler/{images}/{model}/"
         folder = directory("analysed/cellprofiler/{images}/{model}/"),
     resources:
