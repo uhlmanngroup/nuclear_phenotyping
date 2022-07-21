@@ -93,20 +93,27 @@ def aggregate_decompress_images(wildcards):
 rule all:
 	input:
 		MODEL_OUT,
+        # aggregate_decompress_images,
         # DATA_IN,
         IMAGES_IN_DIR,
         # "analysed/data/{images}",
-        aggregate_decompress_images,
-        expand("analysed/cellprofiler/{model}/{feature_inclusions}_{csv_variants}.csv",
+        # expand("analysed/cellprofiler_{model}/{feature_inclusions}_{csv_variants}.csv",
+        #     feature_inclusions=FEATURE_INCLUSIONS,
+        #     csv_variants=CSV_VARIANTS,
+        #     model=MODELS),       
+        #  expand("analysed/cellprofiler/{images}/{model}/",
+        #                 images=images,
+        #                 model=MODELS),
+        expand("analysed/results/{model}/{feature_inclusions}_{csv_variants}.csv",
+            model=MODELS,
             feature_inclusions=FEATURE_INCLUSIONS,
-            csv_variants=CSV_VARIANTS,
-            model=MODELS),       
+            csv_variants=CSV_VARIANTS),
         # expand("analysed/cellprofiler/{images}/{model}/{feature_inclusions}_{csv_variants}.csv",
         #                 allow_missing=True,
-        #                 images=renamed_images_glob,
-        #                 csv_variants=CSV_VARIANTS,
-        #                 feature_inclusions=FEATURE_INCLUSIONS,
+        #                 images=images,
         #                 model=MODELS,
+        #                 feature_inclusions=FEATURE_INCLUSIONS,
+        #                 csv_variants=CSV_VARIANTS,
         #             )
         # "analysed/data",
         # expand("analysed/data/temp/{images_in}",images_in=images_glob)
@@ -410,16 +417,22 @@ images_glob, = glob_wildcards("analysed/data/{images}/")
 #             print(e)
 
 def cellprofiler_merge(wildcards):
-    images, = glob_wildcards("analysed/data/{images}")
-    return expand("analysed/cellprofiler/{images}/{{model}}/",
-                    allow_missing=True,
-                    images=images)
+    checkpoints.get_image_data.get(**wildcards)
+    images_raw, = glob_wildcards(
+        "data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif")
+    checkpoints.confirm_data.get(**wildcards)
+    images, = glob_wildcards("analysed/data/images/{images}.tif")
+    return expand(
+            "analysed/cellprofiler/{images}/{model}/{feature_inclusions}_{csv_variants}.csv",
+            allow_missing=True,
+            images=images,)
+# images, = glob_wildcards("analysed/data/images/{images}.tif")
 
 rule cellprofiler_merge:
     input:
-        folder = cellprofiler_merge
+        cellprofiler_merge
     output:
-        csv="analysed/cellprofiler/{model}/{feature_inclusions}_{csv_variants}.csv"
+        csv="analysed/results/{model}/{feature_inclusions}_{csv_variants}.csv"
     resources:
         mem_mb=16000
     run:
@@ -427,8 +440,7 @@ rule cellprofiler_merge:
             glob_string = f'analysed/cellprofiler/*cellesce*/{wildcards.model}/{wildcards.feature_inclusions}_{wildcards.csv_variants}.csv'
             print(glob_string)
             df = dd.read_csv(glob_string)
-
-            print(df)
+            # print(df)
             # df = pd.concat(map(pd.read_csv, input.files_in), ignore_index=True)
             df = df.compute()
             if "PathName_image" in df.columns:
