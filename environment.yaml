@@ -1,7 +1,12 @@
 name: cellesce
+channels:
+  - bioconda
+  - conda-forge
 dependencies:
 - python
 - pandas
+- snakemake
+- ipython
 - scikit-learn
 - matplotlib
 - cellprofiler
