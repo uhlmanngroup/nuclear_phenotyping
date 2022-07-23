@@ -119,13 +119,14 @@ checkpoint get_image_data:
     params:
         data_folder=DATA_IN
     output:
-        directory(IMAGES_IN_DIR)
+        folder=IMAGES_IN_DIR,
     shell:
         "unzip {input} -d {params.data_folder}"
 
 checkpoint move_data:
     input:
-        "data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif"
+        folder=IMAGES_IN_DIR,
+        file="data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif"
     output:
         # images = "analysed/data/{images}",
         checkpoint="analysed/data/images/temp/{images_raw}/projection_XY_16_bit.chkpt"
@@ -134,7 +135,7 @@ checkpoint move_data:
         file_name=lambda wildcards: "analysed/data/images/"+(wildcards.images_raw).replace('/','_').replace(' ','_')+'.tif'
     shell:
         """
-        cp -n '{input}' '{params.file_name}'
+        cp -n '{input.file}' '{params.file_name}'
         touch '{output.checkpoint}'
         """
 
