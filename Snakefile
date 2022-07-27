@@ -10,6 +10,14 @@ import dask.dataframe as dd
 import pandas as pd
 
 
+# let Snakemake assert the presence of the required environment variable
+# envvars:
+#     "ZENODO_ACCESS_TOKEN"
+
+# access_token = os.environ["ZENODO_ACCESS_TOKEN"]
+# access_token = "W0WX9ZcYcC4lI38ZeRBrhRlYECpNyS7UF017Ksk2isaI78UcEJD1yy0B5uSk"
+zenodo = RemoteProvider(access_token="W0WX9ZcYcC4lI38ZeRBrhRlYECpNyS7UF017Ksk2isaI78UcEJD1yy0B5uSk")
+
 # FTP = FTPRemoteProvider(username="bsftp", password="bsftp1")
 # ftp_path = "***REMOVED***"
 # print(FTP.glob_wildcards(ftp_path))
@@ -74,6 +82,7 @@ rule all:
                 feature_inclusions=FEATURE_INCLUSIONS,
                 csv_variants=CSV_VARIANTS
                 ),
+        zenodo.remote("results_csv.zip"),
 
 rule get_training_data:
     # input:
@@ -306,6 +315,28 @@ rule cellprofiler_merge:
             
         except Exception as e:
             print(e)
+
+
+
+rule upload:
+    input:
+    #    expand(
+    #         "results/{model}/{feature_inclusions}/{csv_variants}.csv",
+    #             model=MODELS,
+    #             feature_inclusions=FEATURE_INCLUSIONS,
+    #             csv_variants=CSV_VARIANTS)
+        expand("results/{model}/{feature_inclusions}_{csv_variants}.csv",
+                model=MODELS,
+                feature_inclusions=FEATURE_INCLUSIONS,
+                csv_variants=CSV_VARIANTS
+                ),
+    output:
+        # zip_file="results_csv.zip",
+        remote=zenodo.remote("results_csv.zip")
+    shell:
+        """
+        zip {output.remote} {input}
+        """
 
 # rule control_points:
 #     input:
