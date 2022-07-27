@@ -15,8 +15,6 @@ import pandas as pd
 #     "ZENODO_ACCESS_TOKEN"
 
 # access_token = os.environ["ZENODO_ACCESS_TOKEN"]
-# access_token = "W0WX9ZcYcC4lI38ZeRBrhRlYECpNyS7UF017Ksk2isaI78UcEJD1yy0B5uSk"
-zenodo = RemoteProvider(access_token="W0WX9ZcYcC4lI38ZeRBrhRlYECpNyS7UF017Ksk2isaI78UcEJD1yy0B5uSk")
 
 # FTP = FTPRemoteProvider(username="bsftp", password="bsftp1")
 # ftp_path = "ftp-private.ebi.ac.uk/b6/58f8c7-0d88-424c-96bd-63d97210703c-a408"
