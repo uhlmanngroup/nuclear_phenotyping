@@ -15,8 +15,8 @@ sns.set()
 from cellesce import Cellesce
 
 VARIABLES = ["Conc /uM", "Date", "Drug"]
-SAVE_FIG = True
-SAVE_CSV = True
+SAVE_FIG = False
+SAVE_CSV = False
 
 # data_folder = "analysed/210720 - ISO49+34 - projection_XY/unet_2022/project_XY_all"
 # data_folder = "analysed/210720 - ISO49+34 - projection_XY/unet_2022/project_XY_objects"
