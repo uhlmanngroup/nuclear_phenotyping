@@ -1,8 +1,9 @@
 # report: "report/workflow.rst"
-
+from snakemake.remote.zenodo import RemoteProvider
+import os
 
 from snakemake.remote import AUTO
-from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
+# from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
 import pandas as pd
 import os
 import dask.dataframe as dd
@@ -66,12 +67,13 @@ def aggregate_decompress_images(wildcards):
 rule all:
 	input:
 		MODEL_OUT,
+        aggregate_decompress_images,
         IMAGES_IN_DIR,
-        expand("analysed/results/{model}/{feature_inclusions}_{csv_variants}.csv",
-            model=MODELS,
-            feature_inclusions=FEATURE_INCLUSIONS,
-            csv_variants=CSV_VARIANTS),
-
+        expand("results/{model}/{feature_inclusions}_{csv_variants}.csv",
+                model=MODELS,
+                feature_inclusions=FEATURE_INCLUSIONS,
+                csv_variants=CSV_VARIANTS
+                ),
 
 rule get_training_data:
     # input:
@@ -109,19 +111,19 @@ rule download_image_data:
         link="https://zenodo.org/record/6566910/files/cellesce_2d.zip?download=1",
         data_folder=DATA_IN
     output:
-        temp("temp.zip")
+        "raw_images.zip"
     shell:
         "wget {params.link} -O {output}"
 
 checkpoint get_image_data:
     input:
-        "temp.zip"
+        "raw_images.zip"
     params:
-        data_folder=DATA_IN
+        data_folder=directory(DATA_IN)
     output:
-        folder=IMAGES_IN_DIR,
+        folder=directory(IMAGES_IN_DIR),
     shell:
-        "unzip {input} -d {params.data_folder}"
+        "unzip -o {input} -d {params.data_folder}"
 
 checkpoint move_data:
     input:
@@ -283,15 +285,17 @@ def cellprofiler_merge(wildcards):
 
 rule cellprofiler_merge:
     input:
-        cellprofiler_merge
+        checkpoint=aggregate_decompress_images,
+        images_list=cellprofiler_merge,
     output:
-        csv="analysed/results/{model}/{feature_inclusions}_{csv_variants}.csv"
+        csv="results/{model}/{feature_inclusions}_{csv_variants}.csv"
     resources:
         mem_mb=16000
     run:
         try:
-            glob_string = f'analysed/cellprofiler/*cellesce*/{wildcards.model}/{wildcards.feature_inclusions}_{wildcards.csv_variants}.csv'
-            print(glob_string)
+            # glob_string = f'analysed/cellprofiler/*cellesce*/{wildcards.model}/{wildcards.feature_inclusions}_{wildcards.csv_variants}.csv'
+            glob_string = input.images_list
+            # print(glob_string)
             df = dd.read_csv(glob_string)
             # print(df)
             # df = pd.concat(map(pd.read_csv, input.files_in), ignore_index=True)
