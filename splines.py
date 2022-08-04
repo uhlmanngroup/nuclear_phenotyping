@@ -64,16 +64,22 @@ kwargs_splinedist = {
 }
 
 kwargs_splinedist = {
-    "data_folder": "control_points",
+    "data_folder": "old_results/control_points",
     "nuclei_path": "objects_FilteredNuclei.csv",
 }
+
+# kwargs_cellprofiler = {
+#     "data_folder": "analysed/cellprofiler/splinedist",
+#     "nuclei_path": "objects_FilteredNuclei.csv",
+# }
+
 
 kwargs_cellprofiler = {
-    "data_folder": "analysed/cellprofiler/splinedist",
+    "data_folder": "old_results/analysed/cellprofiler/splinedist",
     "nuclei_path": "objects_FilteredNuclei.csv",
 }
 
-
+# %%
 # kwargs_cellprofiler = {
 #     "data_folder": "analysed/cellprofiler/splinedist_32",
 #     "nuclei_path": "objects_FilteredNuclei.csv",
@@ -125,6 +131,17 @@ df_dist = df_sorted.apply(
     axis=1,
     result_type="expand",
 )
+# %%
+euclid = euclidean_distances(np.array(df_sorted.iloc[0]).reshape(-1, 1))
+
+from sklearn.manifold import MDS 
+
+mds = MDS(dissimilarity='precomputed').fit(euclid)
+
+mds.transform(euclid)
+
+# %%
+
 df_dist = df_sorted.apply(
     lambda x: euclidean_distances(np.array([x[0::2], x[1::2]]).T).flatten(),
     axis=1,
@@ -250,7 +267,7 @@ important_features = (
     .sort_values("Principal Component")
 )
 plt.show()
-
+# %%
 # sns.catplot(
 #     x="Principal Component",
 #     y="Feature",
@@ -259,18 +276,19 @@ plt.show()
 #     sharey=False,
 # )
 # plt.show()
+# %%
 
-
-sns.catplot(
-    col="Principal Component",
-    y="Feature",
-    x="Component Magnitude",
-    sharey=False,
-    data=component_melt.reset_index(),
-    row="Features",
-    height=12,
-)
-plt.show()
+# sns.catplot(
+#     col="Principal Component",
+#     y="Feature",
+#     x="Component Magnitude",
+#     sharey=False,
+#     data=component_melt.reset_index(),
+#     row="Features",
+#     height=12,
+# )
+# plt.show()
+# %%
 # df = df.iloc[:,random.sample(range(0, features), 32)]
 
 print(
@@ -358,8 +376,13 @@ spline_importances = feature_importance.xs("Spline", level="Features")["Importan
 
 cellprofiler_importances = feature_importance.xs("Cellprofiler", level="Features")["Importance"]
 
-spline_H = scipy.stats.entropy(spline_importances)
-cellprofiler_H = scipy.stats.entropy(cellprofiler_importances)
+spline_H = scipy.stats.entropy(spline_importances,qk=np.ones_like(spline_importances)/len(spline_importances))
+
+cellprofiler_H = scipy.stats.entropy(cellprofiler_importances,qk=np.ones_like(cellprofiler_importances)/len(cellprofiler_importances));cellprofiler_H
+
+# scipy.stats.ks_2samp(cellprofiler_importances,np.ones_like(cellprofiler_importances)/len(cellprofiler_importances))
+
+# scipy.stats.ks_2samp(spline_importances,np.ones_like(spline_importances)/len(spline_importances))
 
 spline_test = scipy.stats.normaltest(feature_importance.xs("Spline", level="Features"))
 cellprofiler_test = scipy.stats.normaltest(
