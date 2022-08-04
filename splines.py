@@ -350,11 +350,23 @@ feature_importance = df.groupby(level="Features").apply(
     .cellesce.feature_importances(variable="Cell")
 )
 
+# %% Spline importance statistical testing
+
+# sample = -1
+
+spline_importances = feature_importance.xs("Spline", level="Features")["Importance"]
+
+cellprofiler_importances = feature_importance.xs("Cellprofiler", level="Features")["Importance"]
+
+spline_H = scipy.stats.entropy(spline_importances)
+cellprofiler_H = scipy.stats.entropy(cellprofiler_importances)
 
 spline_test = scipy.stats.normaltest(feature_importance.xs("Spline", level="Features"))
 cellprofiler_test = scipy.stats.normaltest(
     feature_importance.xs("Cellprofiler", level="Features")
 )
+print(f"Spline: {spline_H} Cellprofiler: {cellprofiler_H}")
+print(f"Spline: {spline_test.pvalue[0]} Cellprofiler: {cellprofiler_test.pvalue[0]}")
 
 
 sns.catplot(
