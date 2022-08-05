@@ -167,12 +167,19 @@ class CellesceDataFrame:
         # labels = df.reset_index()[[variable]].astype(str)
 
         # This stops the model cheating
-        X_train = df.groupby(groupby, as_index=False).apply(
+        
+        return model_selection.train_test_split(
+                    df,
+                    df.reset_index()[[variable]].astype(str),
+                    stratify=df.index.get_level_values(variable))
+        X_train = df.groupby(groupby, as_index=False,group_keys=False).apply(
             lambda x: x.sample(frac=frac)
         )
         if len(df) == len(X_train):
             X_train = df.sample(frac=frac)
-        X_test = pd.concat([df, X_train]).drop_duplicates(keep=False)
+
+        dupe_df = pd.concat([df, X_train])
+        X_test = dupe_df[~dupe_df.index.duplicated(keep=False)]
         y_train = X_train.reset_index()[[variable]].astype(str)
         y_test = X_test.reset_index()[[variable]].astype(str)
         # feature_df_in = feature_df_median_in

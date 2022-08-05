@@ -12,6 +12,11 @@ from sklearn import model_selection
 import pathlib
 import scipy
 import random
+import warnings
+from tqdm import tqdm
+
+
+warnings.filterwarnings("ignore")
 
 sns.set()
 from cellesce import Cellesce
@@ -108,6 +113,58 @@ def metadata(x):
 from sklearn.metrics.pairwise import euclidean_distances
 from cellesce import Cellesce
 
+
+def augment_df(df, function, fold=10):
+    return pd.concat(
+        [function(df, theta) for theta in np.random.uniform(0, 2 * np.pi, fold)]
+    )
+
+
+def rotate_control_points(df, theta=0):
+    df_x, df_y = df.pipe(flat_df_to_dx_dy)
+    df_x_prime = df_x * np.cos(theta) - np.array(df_y * np.sin(theta))
+    df_y_prime = np.array(df_x * np.sin(theta)) + df_y * np.cos(theta)
+    # df_prime = pd.concat([df_x_prime,df_y_prime],axis=1).assign(Angle=theta)
+    df_prime = pd.concat([df_x_prime, df_y_prime], axis=1)
+    return df_prime
+
+
+def align_coords_to_origin(df):
+    df_x, df_y = df.pipe(flat_df_to_dx_dy)
+    df_x_prime = df_x - np.mean(df_x)
+    df_y_prime = df_y - np.mean(df_y)
+    df_prime = pd.concat([df_x_prime, df_y_prime], axis=1)
+    return df_prime
+
+
+def flat_df_to_dx_dy(df):
+    odds = np.arange(0, len(df.columns) - 1, 2)
+    evens = np.arange(1, len(df.columns), 2)
+
+    df_x = df[odds.astype(str)]
+    df_y = df[evens.astype(str)]
+    return df_x, df_y
+
+
+def df_add_augmentation_index(df, index_name="augmentation"):
+    return df.set_index(
+        df.groupby(level=df.index.names).cumcount().rename(index_name), append=True
+    )
+
+
+def augment_distance_matrix(df,axis=0):
+    return pd.concat(
+        [
+            # Numpy roll each row by i for each column
+            df.transform(np.roll, 1, i, 0)
+            for i in range(len(df_splinedist.columns))
+        ]
+    ,axis=axis)
+
+
+def augment_repeat(df,fold=1):
+    return (df.reindex(df_cellprofiler.index.repeat(fold)))
+
 df_splinedist = (
     Cellesce(**kwargs_splinedist)
     .get_data()
@@ -115,56 +172,58 @@ df_splinedist = (
     .cellesce.clean()
     .assign(Features="Spline")
     .set_index(["Features"], append=True)
-)
-# %%
-
-
-# %%
-# %%
-# distogram.flatten()
-# distogram = sklearn.metrics.pairwise.euclidean_distances(df.iloc[[0]].T)
-df_sorted = df_splinedist.reindex(
-    np.array(sorted(df_splinedist.columns.astype(np.int))).astype(np.str), axis=1
-)
-df_dist = df_sorted.apply(
-    lambda x: euclidean_distances(np.array(x).reshape(-1, 1)).flatten(),
-    axis=1,
-    result_type="expand",
-)
-# %%
-euclid = euclidean_distances(np.array(df_sorted.iloc[0]).reshape(-1, 1))
-
-from sklearn.manifold import MDS 
-
-mds = MDS(dissimilarity='precomputed').fit(euclid)
-
-mds.transform(euclid)
-
-# %%
-
-df_dist = df_sorted.apply(
-    lambda x: euclidean_distances(np.array([x[0::2], x[1::2]]).T).flatten(),
-    axis=1,
-    result_type="expand",
+    .transform(align_coords_to_origin)
 )
 
-df_dist = (
-    df_sorted.apply(
-        lambda x: np.tril(euclidean_distances(np.array([x[0::2], x[1::2]]).T))
-        .flatten()
-        .flatten(),
-        axis=1,
-        result_type="expand",
+
+# %%
+
+
+# # %%
+# # %%
+# # distogram.flatten()
+# # distogram = sklearn.metrics.pairwise.euclidean_distances(df.iloc[[0]].T)
+# df_sorted = df_splinedist.reindex(
+#     np.array(sorted(df_splinedist.columns.astype(np.int))).astype(np.str), axis=1
+# )
+# df_dist = df_sorted.apply(
+#     lambda x: euclidean_distances(np.array(x).reshape(-1, 1)).flatten(),
+#     axis=1,
+#     result_type="expand",
+# )
+# # %%
+# euclid = euclidean_distances(np.array(df_sorted.iloc[0]).reshape(-1, 1))
+
+# # %%
+
+# df_dist = df_sorted.apply(
+#     lambda x: euclidean_distances(np.array([x[0::2], x[1::2]]).T).flatten(),
+#     axis=1,
+#     result_type="expand",
+# )
+
+
+def df_to_distance_matrix(df):
+    return (
+        df.apply(
+            lambda x: np.tril(euclidean_distances(np.array([x[0::2], x[1::2]]).T))
+            .flatten()
+            .flatten(),
+            axis=1,
+            result_type="expand",
+        )
+        .replace(0, np.nan)
+        .dropna(axis=1)
     )
-    .replace(0, np.nan)
-    .dropna(axis=1)
-)
-df_dist.columns = df_dist.columns.astype(str)
-# df_dist = (df_sorted
-#             .apply(lambda x: euclidean_distances(np.array([x[0::2],x[1::2]]).T,[[0,0]])
-#             .flatten(),axis=1,result_type="expand"))
-df_splinedist = df_dist
-rows, features = df_splinedist.shape
+
+
+# df_dist.columns = df_dist.columns.astype(str)
+# # df_dist = (df_sorted
+# #             .apply(lambda x: euclidean_distances(np.array([x[0::2],x[1::2]]).T,[[0,0]])
+# #             .flatten(),axis=1,result_type="expand"))
+# df_splinedist = df_dist
+# rows, features = df_splinedist.shape
+
 df_cellprofiler = (
     Cellesce(**kwargs_cellprofiler)
     .get_data()
@@ -181,13 +240,12 @@ df = pd.concat([df_cellprofiler, df_splinedist])
 pca_spline = PCA(n_components=0.99).fit(df_splinedist)
 pca_cellprofiler = PCA(n_components=0.99).fit(df_cellprofiler)
 
-pd.DataFrame(pca_spline.explained_variance_, columns=["Explained Variance"]).assign(
-    **{
-        "Features": "Control points",
-        "Principal Component":
-            np.arange(0, len(pca_spline.explained_variance_)),
-    }
-)
+# pd.DataFrame(pca_spline.explained_variance_, columns=["Explained Variance"]).assign(
+#     **{
+#         "Features": "Control points",
+#         "Principal Component": np.arange(0, len(pca_spline.explained_variance_)),
+#     }
+# )
 
 
 exp_var = pd.concat(
@@ -266,7 +324,7 @@ important_features = (
     .drop_duplicates(["Features", "Principal Component"])
     .sort_values("Principal Component")
 )
-plt.show()
+
 # %%
 # sns.catplot(
 #     x="Principal Component",
@@ -362,11 +420,53 @@ plt.colorbar(cax=cax)
 plt.savefig(metadata("fingerprints.pdf"), bbox_inches="tight")
 plt.show()
 # %%
+
+
+
+
+# df_distance_matrix = (df_splinedist
+#                       .pipe(df_to_distance_matrix)
+#                       .pipe(augment_distance_matrix,axis=1))
+
+
+
+
+# df = pd.concat([df_cellprofiler, df_splinedist])
+
+# df = pd.concat([df_cellprofiler,
+#                 df_splinedist.pipe(df_to_distance_matrix)])
+
+
+# df = pd.concat([df_cellprofiler
+#                     .pipe(augment_repeat, fold=1),
+#                 df_splinedist
+#                     .pipe(df_to_distance_matrix)
+#                     .pipe(augment_distance_matrix)
+#                     .pipe(df_add_augmentation_index)])
+
+df = pd.concat(
+    [
+        df_cellprofiler
+            .pipe(augment_repeat, fold=1)
+            .pipe(df_add_augmentation_index),
+        df_splinedist
+            .pipe(augment_df, rotate_control_points, fold=500)
+            .pipe(df_add_augmentation_index),
+    ]
+)
+
+# df_cellprofiler_rep = df_cellprofiler.reindex(df_cellprofiler.index.repeat(3)).pipe(
+#     df_add_augmentation_index
+# )
+
+# df = df_cellprofiler_rep
 feature_importance = df.groupby(level="Features").apply(
-    lambda df: df.cellesce.grouped_median()
+    lambda df: df.cellesce.grouped_median("ObjectNumber")
     .dropna(axis=1)
     .cellesce.feature_importances(variable="Cell")
 )
+
+# %%
 
 # %% Spline importance statistical testing
 
@@ -374,11 +474,19 @@ feature_importance = df.groupby(level="Features").apply(
 
 spline_importances = feature_importance.xs("Spline", level="Features")["Importance"]
 
-cellprofiler_importances = feature_importance.xs("Cellprofiler", level="Features")["Importance"]
+cellprofiler_importances = feature_importance.xs("Cellprofiler", level="Features")[
+    "Importance"
+]
 
-spline_H = scipy.stats.entropy(spline_importances,qk=np.ones_like(spline_importances)/len(spline_importances))
+spline_H = scipy.stats.entropy(
+    spline_importances, qk=np.ones_like(spline_importances) / len(spline_importances)
+)
 
-cellprofiler_H = scipy.stats.entropy(cellprofiler_importances,qk=np.ones_like(cellprofiler_importances)/len(cellprofiler_importances));cellprofiler_H
+cellprofiler_H = scipy.stats.entropy(
+    cellprofiler_importances,
+    qk=np.ones_like(cellprofiler_importances) / len(cellprofiler_importances),
+)
+cellprofiler_H
 
 # scipy.stats.ks_2samp(cellprofiler_importances,np.ones_like(cellprofiler_importances)/len(cellprofiler_importances))
 
@@ -464,10 +572,84 @@ plt.show()
 #         .assign(Fold=fold) for fold in range(5)
 #         ]).pipe(save_csv,"Cell_predictions_image_vs_nuclei.csv")
 # %%
-import warnings
-from tqdm import tqdm
 
-warnings.filterwarnings("ignore")
+
+# No augmentation
+# df = pd.concat([df_cellprofiler, df_splinedist])
+
+# Distance matrix method
+# df = pd.concat([df_cellprofiler, df_splinedist.pipe(df_to_distance_matrix)])
+df = pd.concat(
+    [
+        df_cellprofiler.reindex(df_cellprofiler.index.repeat(100)).pipe(
+            df_add_augmentation_index
+        ),
+        df_splinedist.pipe(augment_df, rotate_control_points, fold=100).pipe(
+            df_add_augmentation_index
+        ),
+    ]
+)
+
+
+# df_cellprofiler_rep = df_cellprofiler.reindex(df_cellprofiler.index.repeat(100)).pipe(df_add_augmentation_index)
+# df_cellprofiler_rep.pipe(df_add_augmentation_index)
+
+# pd.MultiIndex.from_arrays([df.index, df.groupby(level=0).cumcount()],
+#                                      names=(list(df.index.names) + ["Augment"]))
+# options = {
+#     "raw": pd.concat([df_cellprofiler, df_splinedist]),
+#     "distance_matrix": pd.concat(
+#         [df_cellprofiler, df_splinedist.pipe(df_to_distance_matrix)]
+#     ),
+#     "angular_augment": pd.concat(
+#         [
+#             df_cellprofiler,
+#             df_splinedist.pipe(augment_df, rotate_control_points, fold=10),
+#         ]
+#     ),
+# }
+
+# df = options["angular_augment"]
+
+
+def get_score_report_per(df, level="Features"):
+    return (
+        df.groupby(level="Features")
+        .apply(
+            lambda df: df.cellesce.grouped_median()
+            .dropna(axis=1)
+            .cellesce.get_score_report(variable="Cell")
+        )
+        .reset_index()
+        .set_index("Metric")
+        .loc[["f1-score", "recall", "precision"]]
+        .reset_index()
+    )
+
+
+plot = (
+    sns.catplot(
+        aspect=1.2,
+        height=3,
+        x="Features",
+        y="Score",
+        col="Metric",
+        row="Kind",
+        # ci=None,
+        data=df.pipe(get_score_report_per, "Features"),
+        sharey=False,
+        kind="bar",
+    )
+    .set_xticklabels(rotation=45)
+    .set(ylim=(0, 1))
+)
+
+# %%
+
+
+df = pd.concat([df_cellprofiler, df_splinedist])
+
+
 data_list = []
 for fold in tqdm(range(5)):
     print(f"Fold {fold}")
