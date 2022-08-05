@@ -10,6 +10,10 @@ This does contains a full snakemake pipeline to:
 - Convert inference images to per-nuclei features
 - Compile nuclei into a csv
 
+Add secrets
+    
+    set -o allexport; source secrets.env;set +o allexport
+
 Install env
 
     make install.snakemake.env
