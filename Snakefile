@@ -14,8 +14,8 @@ import os
 
 # let Snakemake assert the presence of the required environment variable
 envvars:
-    "ZENODO_ACCESS_TOKEN"
-    "FTP_SERVER"
+    "ZENODO_ACCESS_TOKEN",
+    "BIOSTUDIES_FTP_SERVER"
 
 access_token = os.environ["ZENODO_ACCESS_TOKEN"]
 ftp_path = os.environ["BIOSTUDIES_FTP_SERVER"]
