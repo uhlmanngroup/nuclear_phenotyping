@@ -10,15 +10,22 @@ import dask.dataframe as dd
 import pandas as pd
 
 
-# let Snakemake assert the presence of the required environment variable
-# envvars:
-#     "ZENODO_ACCESS_TOKEN"
+import os
 
-# access_token = os.environ["ZENODO_ACCESS_TOKEN"]
+# let Snakemake assert the presence of the required environment variable
+envvars:
+    "ZENODO_ACCESS_TOKEN",
+    "BIOSTUDIES_FTP_SERVER"
+
+access_token = os.environ["ZENODO_ACCESS_TOKEN"]
+ftp_path = os.environ["BIOSTUDIES_FTP_SERVER"]
+
 
 # FTP = FTPRemoteProvider(username="bsftp", password="bsftp1")
-# ftp_path = "ftp-private.ebi.ac.uk/b6/58f8c7-0d88-424c-96bd-63d97210703c-a408"
 # print(FTP.glob_wildcards(ftp_path))
+
+
+zenodo = RemoteProvider(deposition="6566910",access_token=access_token)
 
 
 # CSV_VARIANTS=["FilteredNuclei","Image","nuclei_objects"]
@@ -33,7 +40,7 @@ CELLPROFILER_FILES = ["all_Experiment","all_FilteredNuclei","all_Image","all_Ide
 DATA_IN = "data"
 IMAGES_IN_DIR = DATA_IN+"/cellesce_2d"
 
-IMAGES_DIR = DATA_IN+"/Stardist/Training - Images"
+IMAGES_DIR = DATA_IN+"/Training - Images"
 MASKS_DIR = DATA_IN+"/Stardist/Training - Masks"
 
 MODEL_OUT = "analysed/models"
@@ -70,9 +77,10 @@ def aggregate_decompress_images(wildcards):
     return expand("analysed/data/images/temp/{images_raw}/projection_XY_16_bit.chkpt", images_raw=images_raw)
 
 
+
 rule all:
-	input:
-		MODEL_OUT,
+    input:
+        # MODEL_OUT,
         aggregate_decompress_images,
         IMAGES_IN_DIR,
         expand("results/{model}/{feature_inclusions}_{csv_variants}.csv",
@@ -81,7 +89,7 @@ rule all:
                 csv_variants=CSV_VARIANTS
                 ),
         zenodo.remote("results_csv.zip"),
-
+        
 rule get_training_data:
     # input:
     params:

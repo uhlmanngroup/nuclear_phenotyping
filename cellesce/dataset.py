@@ -16,6 +16,7 @@ from sklearn.metrics import plot_confusion_matrix, classification_report
 from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectFromModel, RFECV, RFE
 
+
 import os
 
 #  %%
@@ -53,15 +54,82 @@ class CellesceDataFrame:
         item = [item] if isinstance(item, str) else item
         return list(set(list_in) - set(item))
 
-    def get_score_report(self, variable="Cell", model=RandomForestClassifier()):
+    def get_scoring_df(
+        self,
+        variable="Cell",
+        model=RandomForestClassifier(),
+        kfolds=5,
+        groupby=None,
+        augment=None,
+    ):
+        # score_list = []
+        # for fold in range(1,kfolds+1):
+        #     score = (self.df.cellesce.get_score_report(variable, model)
+        #              .assign(Fold=fold))
+        #     score_list.append(score)
+        return pd.concat(
+            [
+                (
+                    self.df.cellesce.get_score_report(
+                        variable=variable, model=model, groupby=groupby, augment=augment
+                    ).assign(Fold=fold)
+                )
+                for fold in range(1, kfolds + 1)
+            ]
+        )
+
+    def get_score_report(
+        self, variable="Cell",
+        groupby=None,augment=None,
+        model=RandomForestClassifier()
+    ):
         # labels, uniques = pd.factorize(df.reset_index()[variable])
         df = self.df
         X, y = df, list(df.index.get_level_values(variable))
         uniques = df.index.get_level_values(variable).to_series().unique()
         # X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y)
-        X_train, X_test, y_train, y_test = df.cellesce.train_test_split(variable)
+        X_train, X_test, y_train, y_test = df.cellesce.train_test_split(
+            variable, groupby=groupby,augment=augment
+        )
         model.fit(X_train, y_train)
-        # y_pred = pd.Series(model.predict(X_test), index=X_test.index)
+        return self.get_score_df_from_model(model, variable, X_test, y_test)
+        # # y_pred = pd.Series(model.predict(X_test), index=X_test.index)
+        # scoring = X_test.apply(lambda x: model.predict([x])[0], axis=1).reset_index(
+        #     variable, name="y_pred"
+        # )
+
+        # # scoring.groupby("Drug").
+        # # %% Fix this
+        # ck = (
+        #     scoring.groupby(variable, group_keys=False)
+        #     .apply(lambda x: metrics.cohen_kappa_score(x["y_pred"], x[variable]))
+        #     .rename("Cappa Kohen")
+        # )
+        # report = (
+        #     pd.DataFrame(
+        #         metrics.classification_report(
+        #             y_test, model.predict(X_test), output_dict=True
+        #         )
+        #     )
+        #     .rename_axis("Metric")
+        #     .drop(["accuracy", "macro avg", "weighted avg"], axis=1)
+        #     .append(ck)
+        # )
+
+        # report_tall = (
+        #     report.melt(
+        #         # id_vars="Metric",
+        #         var_name="Kind",
+        #         value_name="Score",
+        #         ignore_index=False,
+        #     )
+        #     .assign(**{"Variable": variable})
+        #     .reset_index()
+        # )
+
+        # return report_tall
+
+    def get_score_df_from_model(self, model, variable, X_test, y_test):
         scoring = X_test.apply(lambda x: model.predict([x])[0], axis=1).reset_index(
             variable, name="y_pred"
         )
@@ -94,7 +162,6 @@ class CellesceDataFrame:
             .assign(**{"Variable": variable})
             .reset_index()
         )
-
         return report_tall
 
     def drop_from_index(self, item):
@@ -104,10 +171,8 @@ class CellesceDataFrame:
     def grouped_median(self, group="ObjectNumber"):
         return self.df.groupby(level=self.df.cellesce.drop_from_index(group)).median()
 
-    def bootstrap(self,groups,size,group="ObjectNumber"):
-        self.groupby(
-            level=list(set(self.attrs["index_headers"]) - {group})
-        ).median()
+    def bootstrap(self, groups, size, group="ObjectNumber"):
+        self.groupby(level=list(set(self.attrs["index_headers"]) - {group})).median()
         # random_sample, make n groups, median of each group
         pass
 
@@ -158,8 +223,27 @@ class CellesceDataFrame:
     def simple_counts(self):
         return self.df.count().iloc[0]
 
-    def train_test_split(self, variable="Cell",frac=0.8,groupby="ImageNumber"):
-        df = self.df.sample(frac=1)
+    # Augment not implemented
+    def groupby_train_split(self,df,variable,groupby,
+                            frac=0.8,seed=42,augment=None):
+        split_list = []
+        for group_name, df_group in df.groupby(
+            groupby, sort=False, as_index=False, group_keys=False
+        ):
+
+            X = df_group.apply(lambda x: x).sort_index().sample(frac=frac, random_state=seed)
+            y = X.index.to_frame()[[variable]].astype(str)
+
+            split_list.append(model_selection.train_test_split(X, y, stratify=y, random_state=seed))
+        X_train, X_test, y_train, y_test = tuple(map(pd.concat,zip(*split_list)))
+        return X_train, X_test, y_train, y_test
+
+    def train_test_split(
+        self, variable="Cell", frac=0.8, augment=None,
+        groupby=None, seed=42
+    ):
+        # df = self.df.sample(frac=1,random_state=seed)
+        df = self.df
 
         # g = df.groupby(level=variable,group_keys=False)
         # df = g.apply(lambda x: x.sample(g.size().min()));df
@@ -167,14 +251,56 @@ class CellesceDataFrame:
         # labels = df.reset_index()[[variable]].astype(str)
 
         # This stops the model cheating
-        X_train = df.groupby(groupby, as_index=False).apply(
-            lambda x: x.sample(frac=frac)
+        # y = df.reset_index()[[variable]].astype(str)
+        # return model_selection.train_test_split(df,y,stratify=y)
+
+        # X_train = df.groupby(groupby, as_index=False,group_keys=False).apply(
+        #     lambda x: x.sample(frac=frac)
+        # )
+
+        # groups = df.groupby(groupby, sort=False, as_index=False, group_keys=False)
+        # group_0 = groups.get_group(list(groups.groups)[0])
+        # group_1 = groups.get_group(list(groups.groups)[1])
+
+        # gss = GroupShuffleSplit(n_splits=1, train_size=frac, random_state=seed)
+        # groups = df.index.get_level_values(groupby)
+        X = df
+        y = df.index.to_frame()[[variable]].astype(str)
+        # (X_train_idx,X_test_idx), (y_train_idx,y_test_idx) = gss.split(X, y, groups)
+        if groupby is not None:
+            return self.groupby_train_split(df,variable,groupby,frac=0.8,seed=42,augment=augment)
+        
+        if augment is not None:
+            X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, stratify=y, random_state=seed)
+            X_train, y_train = augment(X_train,y_train)
+            return X_train, X_test, y_train, y_test
+        
+        return model_selection.train_test_split(X, y, stratify=y, random_state=seed)
+
+        train_idx, test_idx = next(gss.split(X, y, groups))
+
+        X_train = X.iloc[train_idx]
+        X_test = X.iloc[test_idx]
+
+        y_train = y.iloc[train_idx]
+        y_test = y.iloc[test_idx]
+
+        return X_train, X_test, y_train, y_test
+
+        X_train = (
+            df.groupby(groupby, sort=False, as_index=False, group_keys=False)
+            .sample(frac=1, random_state=seed)
+            .sort_index()
+            .sample(frac=0.8, random_state=seed)
         )
+
         if len(df) == len(X_train):
-            X_train = df.sample(frac=frac)
-        X_test = pd.concat([df, X_train]).drop_duplicates(keep=False)
-        y_train = X_train.reset_index()[[variable]].astype(str)
-        y_test = X_test.reset_index()[[variable]].astype(str)
+            X_train = df.sample(frac=frac, random_state=seed).sort_index()
+
+        dupe_df = pd.concat([df, X_train])
+        X_test = dupe_df[~dupe_df.index.duplicated(keep=False)]
+        y_train = X_train.index.to_frame()[[variable]].astype(str)
+        y_test = X_test.index.to_frame()[[variable]].astype(str)
         # feature_df_in = feature_df_median_in
         return X_train, X_test, y_train, y_test
 
@@ -200,27 +326,42 @@ class CellesceDataFrame:
 
     def feature_importances(
         self,
-        model=RandomForestClassifier(),
+        model_class=RandomForestClassifier,
         variable="Cell",
+        groupby=None,
+        augment=None,
+        kfolds=1,
     ):
-        X_train, X_test, y_train, y_test = (
-            self.df
-            # .balance_dataset(variable)
-            .cellesce.train_test_split(variable)
-        )
-        model.fit(X_train, np.ravel(y_train))
+        importance_list = []
 
-        print(classification_report(y_test, model.predict(X_test)))
-        print(metrics.cohen_kappa_score(y_test, model.predict(X_test)))
-        importance = pd.DataFrame(
-            model.feature_importances_,
-            index=pd.Series(X_train.columns, name='Feature') ,
-            columns=["Importance"],
-            
-        ).sort_values(ascending=False, by="Importance")
-        importance["Cumulative Importance"] = importance.cumsum()
-        importance.attrs.update(self.df.attrs)
-        return importance
+        for fold in range(1, kfolds + 1):
+            model = model_class()
+            X_train, X_test, y_train, y_test = (
+                self.df
+                # .balance_dataset(variable)
+                .cellesce.train_test_split(variable, groupby=groupby, augment=augment,seed=fold)
+            )
+            model.fit(X_train, y_train)
+
+            print(classification_report(y_test, model.predict(X_test)))
+            print(metrics.cohen_kappa_score(y_test, model.predict(X_test)))
+
+            importance = (
+                pd.DataFrame(
+                    model.feature_importances_,
+                    index=pd.Series(X_train.columns, name="Feature"),
+                    columns=["Importance"],
+                )
+                .assign(Fold=fold)
+                .sort_values(ascending=False, by="Importance")
+            )
+
+            importance["Cumulative Importance"] = importance.cumsum()["Importance"]
+            importance.attrs.update(self.df.attrs)
+            importance_list.append(importance)
+            # scores = self.get_score_df_from_model(model,variable,X_test,y_test)
+
+        return pd.concat(importance_list)
 
     def keeplevel(self, level):
         return self.df.droplevel(self.df.cellesce.drop_from_index(level))
@@ -264,7 +405,7 @@ class Cellesce(pd.DataFrame):
         object_headers=["ImageNumber", "ObjectNumber"],
         filename_headers=["Date", "Drug", "Cell", "Replicate", "Conc /uM"],
         # regex_pattern=r"[\/\\](?P<Date>[\d]+)_.+_(?P<Cell>ISO[\d]+)_(?P<Drug>[A-Za-z0-9]+)_(?P<Concentration>[\d\w_-]+uM)(?:.+Position_(?P<Position>[\d]))?",
-        regex_pattern = r"(?P<Date>([\d]{4}\-[\d]{2}\-[\d]{2})).+_(?P<Cell>ISO[\d]+)_(?P<Drug>[A-Za-z0-9]+)_(?P<Concentration>[\d\w_-]+uM)(?:.+Position_(?P<Position>[\d]))?",
+        regex_pattern=r"(?P<Date>([\d]{4}\-[\d]{2}\-[\d]{2})).+_(?P<Cell>ISO[\d]+)_(?P<Drug>[A-Za-z0-9]+)_(?P<Concentration>[\d\w_-]+uM)(?:.+Position_(?P<Position>[\d]))?",
         SAVE_FIG=False,
         SAVE_CSV=False,
         bad_cols_file="bad_cols.json",
@@ -411,8 +552,7 @@ def zero_is_control(df):
 
 def force_numeric(df):
     return (
-        df
-        .select_dtypes("number")
+        df.select_dtypes("number")
         .apply(pd.to_numeric)
         .select_dtypes("number")
         .replace([np.inf, -np.inf], np.nan)
