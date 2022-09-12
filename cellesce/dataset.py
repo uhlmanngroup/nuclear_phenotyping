@@ -17,6 +17,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectFromModel, RFECV, RFE
 
 
+
 import os
 
 #  %%
@@ -79,9 +80,11 @@ class CellesceDataFrame:
         )
 
     def get_score_report(
-        self, variable="Cell",
-        groupby=None,augment=None,
-        model=RandomForestClassifier()
+        self,
+        variable="Cell",
+        groupby=None,
+        augment=None,
+        model=RandomForestClassifier(),
     ):
         # labels, uniques = pd.factorize(df.reset_index()[variable])
         df = self.df
@@ -89,7 +92,7 @@ class CellesceDataFrame:
         uniques = df.index.get_level_values(variable).to_series().unique()
         # X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y)
         X_train, X_test, y_train, y_test = df.cellesce.train_test_split(
-            variable, groupby=groupby,augment=augment
+            variable, groupby=groupby, augment=augment
         )
         model.fit(X_train, y_train)
         return self.get_score_df_from_model(model, variable, X_test, y_test)
@@ -224,23 +227,29 @@ class CellesceDataFrame:
         return self.df.count().iloc[0]
 
     # Augment not implemented
-    def groupby_train_split(self,df,variable,groupby,
-                            frac=0.8,seed=42,augment=None):
+    def groupby_train_split(
+        self, df, variable, groupby, frac=0.8, seed=42, augment=None
+    ):
         split_list = []
         for group_name, df_group in df.groupby(
             groupby, sort=False, as_index=False, group_keys=False
         ):
 
-            X = df_group.apply(lambda x: x).sort_index().sample(frac=frac, random_state=seed)
+            X = (
+                df_group.apply(lambda x: x)
+                .sort_index()
+                .sample(frac=frac, random_state=seed)
+            )
             y = X.index.to_frame()[[variable]].astype(str)
 
-            split_list.append(model_selection.train_test_split(X, y, stratify=y, random_state=seed))
-        X_train, X_test, y_train, y_test = tuple(map(pd.concat,zip(*split_list)))
+            split_list.append(
+                model_selection.train_test_split(X, y, stratify=y, random_state=seed)
+            )
+        X_train, X_test, y_train, y_test = tuple(map(pd.concat, zip(*split_list)))
         return X_train, X_test, y_train, y_test
 
     def train_test_split(
-        self, variable="Cell", frac=0.8, augment=None,
-        groupby=None, seed=42
+        self, variable="Cell", frac=0.8, augment=None, groupby=None, seed=42
     ):
         # df = self.df.sample(frac=1,random_state=seed)
         df = self.df
@@ -268,13 +277,17 @@ class CellesceDataFrame:
         y = df.index.to_frame()[[variable]].astype(str)
         # (X_train_idx,X_test_idx), (y_train_idx,y_test_idx) = gss.split(X, y, groups)
         if groupby is not None:
-            return self.groupby_train_split(df,variable,groupby,frac=0.8,seed=42,augment=augment)
-        
+            return self.groupby_train_split(
+                df, variable, groupby, frac=0.8, seed=42, augment=augment
+            )
+
         if augment is not None:
-            X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, stratify=y, random_state=seed)
-            X_train, y_train = augment(X_train,y_train)
+            X_train, X_test, y_train, y_test = model_selection.train_test_split(
+                X, y, stratify=y, random_state=seed
+            )
+            X_train, y_train = augment(X_train, y_train)
             return X_train, X_test, y_train, y_test
-        
+
         return model_selection.train_test_split(X, y, stratify=y, random_state=seed)
 
         train_idx, test_idx = next(gss.split(X, y, groups))
@@ -339,7 +352,9 @@ class CellesceDataFrame:
             X_train, X_test, y_train, y_test = (
                 self.df
                 # .balance_dataset(variable)
-                .cellesce.train_test_split(variable, groupby=groupby, augment=augment,seed=fold)
+                .cellesce.train_test_split(
+                    variable, groupby=groupby, augment=augment, seed=fold
+                )
             )
             model.fit(X_train, y_train)
 
