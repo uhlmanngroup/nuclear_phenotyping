@@ -24,6 +24,7 @@ warnings.filterwarnings("ignore")
 sns.set()
 from cellesce import Cellesce
 
+plt.ion()
 
 VARIABLES = ["Conc /uM", "Date", "Drug"]
 SAVE_FIG = True
@@ -242,6 +243,7 @@ df_splinedist = (
 # %%
 
 # %%
+TEST_ROT =1
 if (TEST_ROT):
     x = df_splinedist.iloc[:, np.arange(0, len(df_splinedist.columns) - 1, 2)]
     y = df_splinedist.iloc[:, np.arange(1, len(df_splinedist.columns), 2)]
@@ -253,7 +255,8 @@ if (TEST_ROT):
     x=df_splinedist_rot.iloc[:, np.arange(0, len(df_splinedist.columns) - 1, 2)]
     y=df_splinedist_rot.iloc[:, np.arange(1, len(df_splinedist.columns), 2)]
     plt.scatter(x.iloc[0],y.iloc[0])
-plt.show()
+    plt.show()
+# %%
 # # %%
 # # %%
 # # distogram.flatten()
@@ -796,7 +799,7 @@ plt.show()
 
 # sample = -1
 
-spline_importances = importance_df.xs("Spline", level="Features")["Importance"]
+spline_importances = importance_df.xs("SplineDist", level="Features")["Importance"]
 
 cellprofiler_importances = importance_df.xs("Cellprofiler", level="Features")[
     "Importance"
