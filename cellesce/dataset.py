@@ -80,7 +80,8 @@ class CellesceDataFrame:
             ]
         )
 
-    @functools.cache
+    # @functools.
+    # Needs python 3.9
     def get_score_report(
         self,
         variable="Cell",
@@ -173,7 +174,7 @@ class CellesceDataFrame:
         return self.df.cellesce.drop_from_list(list(self.df.index.names), item)
 
     # df.index.names.difference(["Cell"])
-    @functools.cache
+    # @functools.cache
     def grouped_median(self, group="ObjectNumber"):
         return (self
                 .df.groupby(level=self.df.cellesce.drop_from_index(group))

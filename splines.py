@@ -114,13 +114,15 @@ import cellesce.shapes as shapes
 df_splinedist = (
     Cellesce(**kwargs_splinedist)
     .get_data()
+    .apply(shapes.align_coords_to_origin_np, axis=1, raw=True)
     .cellesce.preprocess()
     .cellesce.clean()
     .assign(Features="SplineDist")
     .set_index(["Features"], append=True)
-    .apply(shapes.align_coords_to_origin_np, axis=1, raw=True)
+    # .apply(shapes.align_coords_to_origin_np, axis=1, raw=True)
     .sample(frac=1)
 )
+df_splinedist
 
 # %%
 
@@ -130,7 +132,7 @@ plt.figure()
 plt.scatter(x.iloc[0], y.iloc[0])
 if not TEST_ROT:
     plt.close()
-
+# %%
 df_splinedist_rot = df_splinedist.apply(
     shapes.rotate_control_points_np, theta=-np.pi / 2, axis=1, raw=True
 )
