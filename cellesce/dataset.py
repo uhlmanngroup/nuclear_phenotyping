@@ -16,6 +16,7 @@ from sklearn.metrics import plot_confusion_matrix, classification_report
 from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectFromModel, RFECV, RFE
 
+import functools
 
 
 import os
@@ -79,6 +80,7 @@ class CellesceDataFrame:
             ]
         )
 
+    @functools.cache
     def get_score_report(
         self,
         variable="Cell",
@@ -171,8 +173,11 @@ class CellesceDataFrame:
         return self.df.cellesce.drop_from_list(list(self.df.index.names), item)
 
     # df.index.names.difference(["Cell"])
+    @functools.cache
     def grouped_median(self, group="ObjectNumber"):
-        return self.df.groupby(level=self.df.cellesce.drop_from_index(group)).median()
+        return (self
+                .df.groupby(level=self.df.cellesce.drop_from_index(group))
+                .median())
 
     def bootstrap(self, groups, size, group="ObjectNumber"):
         self.groupby(level=list(set(self.attrs["index_headers"]) - {group})).median()
@@ -223,6 +228,7 @@ class CellesceDataFrame:
     #             .size()
     #     )
 
+        
     def simple_counts(self):
         return self.df.count().iloc[0]
 
@@ -555,6 +561,7 @@ class Cellesce(pd.DataFrame):
             .str.replace("uM", "")
         ).round(decimals=decimals)
         return extracted_data[filename_headers]
+
 
 
 def zero_is_control(df):
