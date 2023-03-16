@@ -121,6 +121,18 @@ labels, details = model.predict_instances(img)
 coord = details['coord']
 
 
+def center(pts):
+    c = [sum(pts[:,0])/len(pts),sum(pts[:,1])/len(pts)]
+    return np.array([[p[0]-c[0],p[1]-c[1]] for p in pts])
+
+#translate the centroids of the objects to the origin
+def translate(coord): 
+    for i in range(len(coord)):
+        object_coefs = coord[i]
+        object_coefs = np.transpose(object_coefs, (1,0))
+        centroid = [sum(object_coefs[:,0])/len(object_coefs),sum(object_coefs[:,1])/len(object_coefs)]
+        object_coefs_translated = np.array([[p[0]-centroid[0],p[1]-centroid[1]] for p in object_coefs])
+        return object_coefs_translated 
 
 # %%
 # def example(model, i, show_dist=True):
