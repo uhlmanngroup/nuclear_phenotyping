@@ -12,5 +12,3 @@ dependencies:
 - cellprofiler
 - seaborn
 - pip
-- pip:
-  - -e "../../."

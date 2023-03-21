@@ -12,7 +12,7 @@ from sklearn.preprocessing import scale, power_transform, robust_scale, normaliz
 from sklearn import model_selection
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
 from sklearn import metrics
-from sklearn.metrics import plot_confusion_matrix, classification_report
+from sklearn.metrics import classification_report
 from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectFromModel, RFECV, RFE
 
