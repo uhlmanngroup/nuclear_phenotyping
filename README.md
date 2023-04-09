@@ -11,7 +11,7 @@ This does contains a full snakemake pipeline to:
 - Compile nuclei into a csv
 
 Add secrets
-    
+
     set -o allexport; source secrets.env;set +o allexport
 
 Install env

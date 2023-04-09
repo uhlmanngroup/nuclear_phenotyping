@@ -18,14 +18,14 @@ envvars:
     "BIOSTUDIES_FTP_SERVER"
 
 access_token = os.environ["ZENODO_ACCESS_TOKEN"]
-ftp_path = os.environ["BIOSTUDIES_FTP_SERVER"]
+# ftp_path = os.environ["BIOSTUDIES_FTP_SERVER"]
 
 
 # FTP = FTPRemoteProvider(username="bsftp", password="bsftp1")
 # print(FTP.glob_wildcards(ftp_path))
 
 
-zenodo = RemoteProvider(deposition="6566910",access_token=access_token)
+zenodo = RemoteProvider(access_token=access_token)
 
 
 # CSV_VARIANTS=["FilteredNuclei","Image","nuclei_objects"]
@@ -75,8 +75,6 @@ def aggregate_decompress_images(wildcards):
     images = [i.replace('/','_').replace(' ','_') for i in images_raw]
     # checkpoints.move_data.get(images_raw=images_raw,images=images,**wildcards)
     return expand("analysed/data/images/temp/{images_raw}/projection_XY_16_bit.chkpt", images_raw=images_raw)
-
-
 
 rule all:
     input:
