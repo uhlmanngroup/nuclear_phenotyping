@@ -1,5 +1,5 @@
-data_in: ./data/cellesce_2d
-data_out: ./processed/cellesce_2d
+data_in: data/cellesce_2d
+data_out: results/cellesce_2d
 # images_in: "{config['data_in']}/{images}/projection_XY_16_bit.tif"
 
 ext: projection_XY_16_bit.tif
@@ -24,7 +24,7 @@ cellprofiler_files:
   - objects_nuclei_objects
 
 models:
-  - stardist
+  # - stardist
   - splinedist
   - unet
 
