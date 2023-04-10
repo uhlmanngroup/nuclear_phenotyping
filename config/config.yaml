@@ -1,0 +1,35 @@
+data_in: ./data/cellesce_2d
+data_out: ./processed/cellesce_2d
+# images_in: "{config['data_in']}/{images}/projection_XY_16_bit.tif"
+
+ext: projection_XY_16_bit.tif
+
+csv_variants:
+  - FilteredNuclei
+  - Image
+feature_inclusions:
+  - all
+  - objects
+
+cellprofiler_files:
+  - all_Experiment
+  - all_FilteredNuclei
+  - all_Image
+  - all_IdentifySecondaryObjects
+  - all_nuclei_objects
+  - objects_Experiment
+  - objects_FilteredNuclei
+  - objects_Image
+  - objects_IdentifySecondaryObjects
+  - objects_nuclei_objects
+
+models:
+  - stardist
+  - splinedist
+  - unet
+
+
+inference_segmentation_cpconfig:
+  splinedist: cellprofiler/instance_cp4.cpproj
+  stardist: cellprofiler/instance_cp4.cpproj
+  unet: cellprofiler/unet_cp4_3_class.cpproj
