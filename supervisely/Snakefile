@@ -1,0 +1,54 @@
+import pims
+
+pims.bioformats.download_jar(version="6.7.0")
+
+# Define input and output file patterns
+# input_pattern = "data/plast_cell/{subfolders}/{filename}.lif"
+# output_pattern = "data/plast_cell/{subfolders}/{filename}.zarr"
+
+subfolder, filename = glob_wildcards(
+    "data/plast_cell/{subfolder}/{filename}.lif",
+)
+
+
+# Define all rule to generate all .zarr files from corresponding .czi files
+rule all:
+    input:
+        expand(
+            "results/plast_cell/{subfolder}/{filename}.zarr/",
+            zip,
+            subfolder=subfolder,
+            filename=filename,
+        ),
+        expand(
+            "results/plast_cell/{subfolder}/{filename}",
+            zip,
+            subfolder=subfolder,
+            filename=filename,
+        ),
+
+
+# Define rule to convert .czi files to .zarr using bioformats2raw
+rule convert_to_zarr:
+    input:
+        "data/plast_cell/{subfolder}/{filename}.lif",
+    output:
+        directory("results/plast_cell{subfolder}/{filename}.zarr"),
+    shell:
+        """
+        bioformats2raw '{input}' '{output}'
+        """
+
+
+# Define rule to convert .czi files to .zarr using bioformats2raw
+rule convert_to_png:
+    input:
+        "data/plast_cell/{subfolder}/{filename}.lif"
+    output:
+        directory("results/plast_cell/{subfolder}/{filename}"),
+    run:
+        # breakpoint()
+        im = pims.Bioformats(input[0])
+        print(im)
+        # for i, frame in enumerate(im):
+            # frame.save(output[0] + f"/{i}.png")

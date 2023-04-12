@@ -1,0 +1,35 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Snakemake Debug",
+        "type": "python",
+        "request": "launch",
+        "module": "snakemake",
+        // "console": "integratedTerminal",
+        "args": [
+          "--snakefile",
+          "${workspaceFolder}/Snakefile",
+        //   "--configfile",
+        //   "${workspaceFolder}/config.yaml",
+          "--cores",
+          "1",
+        //   "--dry-run",
+          "--printshellcmds",
+          "--debug-dag",
+          "--reason",
+          "--forceall",
+          "--nocolor",
+          "--nolock"
+        ],
+        "env": {"PYTHONIOENCODING": "utf-8"},
+        // "stopOnEntry": false,  
+        "console": "integratedTerminal",
+        "justMyCode": false,
+        "cwd": "${fileDirname}",
+        // "python": "${command:python.defaultInterpreterPath}"
+        // "python": "${command:python.interpreterPath}"
+      }
+    ]
+  }
+  

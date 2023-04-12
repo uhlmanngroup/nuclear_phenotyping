@@ -1,0 +1,27 @@
+name: supervisely
+channels:
+  - anaconda
+  - conda-forge
+  - bioconda
+  - defaults
+  - nvidia
+  - ome
+dependencies:
+  - conda
+  - python=3.8
+  - cudatoolkit
+  - pip=21
+  - mamba
+  # - python=3.9
+  - mamba
+  # - pip
+  - bioformats
+  - jpype1
+  - pims
+  - snakemake
+  - bioformats2raw
+  - napari
+  - napari-ome-zarr
+  - pip:
+    - supervisely
+    - napari-ome-zarr
