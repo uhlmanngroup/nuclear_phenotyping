@@ -1,54 +1,226 @@
 import pims
+import PIL
+import os
+import supervisely as sly
+from pathlib import Path
+from glob import glob
 
+# from dotenv import load_dotenv
 pims.bioformats.download_jar(version="6.7.0")
 
 # Define input and output file patterns
 # input_pattern = "data/plast_cell/{subfolders}/{filename}.lif"
 # output_pattern = "data/plast_cell/{subfolders}/{filename}.zarr"
 
-subfolder, filename = glob_wildcards(
-    "data/plast_cell/{subfolder}/{filename}.lif",
+(filename,) = glob_wildcards(
+    "data/plast_cell/{filename}.lif",
 )
+# subfolder, filename, coords = glob_wildcards(
+#     "data/plast_cell/{subfolder}/{filename}/{filename}+{coords}.png",
+# )
+
+address = "https://app.supervise.ly/"
+token = os.environ["API_TOKEN"]
+
+
+# def expand_from_metadata(wildcards):
+#     filename = glob_wildcards("data/plast_cell/{filename}.lif")
+#     wildcards.filename = filename
+#     checkpoint_output = checkpoints.get_metadata.get(**wildcards).output[0]
+#     with open(checkpoint_output) as f:
+#         metadata = json.load(f)
+#     input_files = []
+#     for filename, coords in tqdm(metadata.items()):
+#         input_files.extend(
+#             expand(
+#                 "results/plast_cell/{filename}/{coords}.png",
+#                 filename=filename,
+#                 coords=coords,
+#             )
+#         )
+#     return input_files
+
+
+# def wait_for_convert_to_png(wildcards):
+#     # breakpoint()
+#     # output = checkpoints.convert_to_png.get(**wildcards).output[0]
+#     # breakpoint()
+#     subfolder, filename = glob_wildcards("data/plast_cell/{subfolder}/{filename}.lif")
+#     # breakpoint()
+#     return expand("results/plast_cell/{subfolder}/{filename}/{coords}.done",
+#             zip,
+#             filename=filename,
+#             subfolder=subfolder,
+#             coords=coords)
+
+
+def get_pngs(wildcards):
+    # breakpoint()
+    (filenames,) = glob_wildcards("data/plast_cell/{filename}.lif")
+    # breakpoint()
+
+    # breakpoint()
+    for filename in filenames:
+        im = pims.Bioformats(f"data/plast_cell/{filename}.lif")
+        # breakpoint()
+        im.iter_axes = "ct"
+        file_list = []
+        # print("Getting metadata")
+        for i, frame in enumerate(im):
+            coords = frame.metadata["coords"]
+            file_list.extend(
+                expand(
+                    "results/plast_cell/{filename}/{i}/{coords}.png",
+                    filename=filename,
+                    i=i,
+                    coords=str(coords),
+                )
+            )
+        # breakpoint()
+    return file_list
+    # str(i)
+    # str(frame.metadata["coords"])
+    # # breakpoint()
+    # print("Saving metadata")
+    # with open(output.metadata, "w") as f:
+    #     json.dump(metadata, f)
+    # print("Saved metadata")
+
+    # return expand("results/plast_cell/{filename}/{coords}.png",
+    #         zip,
+    #         filename=filename,
+    #         subfolder=subfolder,
+    #         coords=coords)
 
 
 # Define all rule to generate all .zarr files from corresponding .czi files
 rule all:
     input:
-        expand(
-            "results/plast_cell/{subfolder}/{filename}.zarr/",
-            zip,
-            subfolder=subfolder,
-            filename=filename,
-        ),
-        expand(
-            "results/plast_cell/{subfolder}/{filename}",
-            zip,
-            subfolder=subfolder,
-            filename=filename,
-        ),
+        get_pngs,
+        # expand(
+        #     "results/plast_cell/{filename}.zarr/",
+        #     zip,
+        #     subfolder=subfolder,
+        #     filename=filename,
+        # ),
+        # expand(
+        #     "results/plast_cell/{filename}/",
+        #     zip,
+        #     subfolder=subfolder,
+        #     filename=filename,
+        # ),
+        # expand(
+        #     "results/plast_cell/{subfolder}/{filename}/{coords}.png",
+        #     zip,
+        #     subfolder=subfolder,
+        #     filename=filename,
+        # ),
+        # expand("results/plast_cell/{filename}/metadata.json", filename=filename),
+        # "results/plast_cell/metadata.json",
+
+
+# rule convert_to_png_dummy:
+#     input:
+#         wait_for_convert_to_png,
+#     output:
+#         touch("results/plast_cell/{filename}.done"),
 
 
 # Define rule to convert .czi files to .zarr using bioformats2raw
-rule convert_to_zarr:
-    input:
-        "data/plast_cell/{subfolder}/{filename}.lif",
-    output:
-        directory("results/plast_cell{subfolder}/{filename}.zarr"),
-    shell:
-        """
-        bioformats2raw '{input}' '{output}'
-        """
+# rule convert_to_zarr:
+#     input:
+#         "data/plast_cell/{filename}.lif",
+#     output:
+#         directory("results/plast_cell/{filename}.zarr"),
+#     shell:
+#         """
+#         bioformats2raw '{input}' '{output}'
+#         """
+
+
+# rule get_metadata:
+#     input:
+#         lif="data/plast_cell/{filename}.lif",
+#     output:
+#         metadata="results/plast_cell/{filename}/metadata.json",
+#     run:
+#         # breakpoint()
+#         im = pims.Bioformats(input.lif)
+#         # print(ims)
+#         # Path(output.metadata).mkdir(exist_ok=True, parents=True)
+#         # breakpoint()
+#         # This isn't general
+#         im.iter_axes = "ct"
+#         metadata = {}
+#         print("Getting metadata")
+#         for i, frame in enumerate(im):
+#             metadata[str(frame.metadata["coords"])] = str(i)
+#             # breakpoint()
+#         print("Saving metadata")
+#         with open(output.metadata, "w") as f:
+#             json.dump(metadata, f)
+#         print("Saved metadata")
+#         # breakpoint()
+#         # breakpoint()
+#         # im = PIL.Image.fromarray(frame)
+#         # file_name = f"{output[0]}/{str(coords)}.png"
+#         # print(file_name)
+#         # im.save(file_name)
+#         im.close()
 
 
 # Define rule to convert .czi files to .zarr using bioformats2raw
 rule convert_to_png:
     input:
-        "data/plast_cell/{subfolder}/{filename}.lif"
+        lif="data/plast_cell/{filename}.lif",
+        # metadata="results/plast_cell/{filename}/metadata.json",
     output:
-        directory("results/plast_cell/{subfolder}/{filename}"),
+        png="results/plast_cell/{filename}/{i}/{coords}.png",
     run:
+        breakpoint()
+        ims = pims.Bioformats(input.lif)
+        # metadata = json.load(open(input.metadata))
+        # i = int(metadata[coords])
+        frame = ims[int(wildcards.i)]
+        im = PIL.Image.fromarray(frame)
+        im.save(output)
+        frame.close()
+        im.close()
+        ims.close()
+        # print(ims)
+        # Path(output[0]).mkdir(exist_ok=True, parents=True)
         # breakpoint()
-        im = pims.Bioformats(input[0])
-        print(im)
-        # for i, frame in enumerate(im):
-            # frame.save(output[0] + f"/{i}.png")
+        # This isn't general
+        # ims.iter_axes = "ct"
+        # for i, frame in enumerate(ims):
+        #     coords = frame.metadata["coords"]
+        #     # breakpoint()
+        #     im = PIL.Image.fromarray(frame)
+        #     file_name = f"{output[0]}/{str(coords)}.png"
+        #     print(file_name)
+        #     im.save(output[0])
+
+
+
+rule upload_to_supervisley:
+    input:
+        "results/plast_cell/{filename}/{coords}.png",
+    output:
+        touch("results/plast_cell/{filename}/{coords}.uploaded"),
+    run:
+        api = sly.Api(address, token)
+        project = api.project.get_or_create(workspace_id=83434, name="plast_data")
+        dataset = api.dataset.get_or_create(project.id, "dataset")
+        # breakpoint()
+        # images = glob("results/plast_cell/**/*.png", recursive=True)
+        image_name = f"{wildcards.filename}/{wildcards.coords}"
+
+        api.image.upload_path(dataset.id, name=image_name, path=image)
+        api.close()
+
+        # api.dataset.add_files(dataset.id, input[0])
+        # supervisely teamfiles upload --id 71236
+
+
+
+#
