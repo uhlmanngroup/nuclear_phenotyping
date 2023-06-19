@@ -1,0 +1,39 @@
+name: plast_cell
+channels:
+  - anaconda
+  - conda-forge
+  - bioconda
+  - defaults
+  - nvidia
+  - ome
+  - pytorch
+dependencies:
+  - conda
+  # - python=3.10
+  # - cudatoolkit
+  # - pyqt
+  - python=3.9
+  # - numpy
+  # - pytorch
+  # - torchvision
+  # - torchaudio
+  # - pytorch-cuda
+  # - cudatoolkit
+  - matplotlib
+  - mamba
+  - pip
+  - bioformats
+  - jpype1
+  - pims
+  - pillow
+  - snakemake
+  - bioformats2raw
+  # - napari
+  - python-dotenv
+  - opencv
+  - napari-ome-zarr
+  - pip:
+    # - supervisely
+    - napari-ome-zarr
+    # - cellpose
+    # - PyQt5
