@@ -7,13 +7,20 @@ from glob import glob
 from tqdm import tqdm
 import dotenv
 import os
+configfile: "config.yaml"
 
 dotenv.load_dotenv()
 # from dotenv import load_dotenv
 pims.bioformats.download_jar(version="6.7.0")
-
+glob_str = f"""
+        {config['data_dir']}/
+        {config['file_glob']}/
+        {{filename}}
+        {config['file_suffix']}
+        """
 (filename,) = glob_wildcards(
-    "data/plast_cell/{filename}.lif",
+    glob_str
+    # "data/plast_cell/{filename}.lif",
 )
 WORKSPACE_ID = 83434
 
@@ -23,15 +30,19 @@ token = os.environ["API_TOKEN"]
 import random
 subset = 50
 
+
 def get_pngs(wildcards,sample=None):
     # breakpoint()
-    (filenames,) = glob_wildcards("data/plast_cell/{filename}.lif")
+    (filenames,) = glob_wildcards(glob_str)
     # breakpoint()
 
     for filename in filenames:
         # breakpoint()
         # filename = "20230216/NMuMG-mut218_5um_20230213_useless"
-        im = pims.Bioformats(f"data/plast_cell/{filename}.lif")
+        im = pims.Bioformats(f"""
+                {config['data_dir']}/
+                {filename}{config['file_suffix']}
+                """)
         # breakpoint()
         im.iter_axes = "ct"
         file_list = []
