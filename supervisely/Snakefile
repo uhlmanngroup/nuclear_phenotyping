@@ -10,9 +10,13 @@ import dotenv
 import os
 import random
 
+
 configfile: "config.yaml"
+
+
 include: "rules/supervisely.smk"
 include: "rules/convert_to_png.smk"
+
 
 dotenv.load_dotenv()
 # from dotenv import load_dotenv
@@ -38,8 +42,6 @@ for folder, filename in zip(folders, filenames):
         image_list.append(metadata)
     # return image_list
 # breakpoint()
-if (config["image_subset"] is not None) and (len(image_list) > config["image_subset"]):
-    image_list = random.sample(image_list, config["image_subset"])
 
 # breakpoint()
 uploaded_annotation_list = [
@@ -50,11 +52,18 @@ uploaded_annotation_list = [
     for image_metadata in image_list
 ]
 
+if (config["image_subset"] is not None) and (
+    len(uploaded_annotation_list) > config["image_subset"]
+):
+    uploaded_annotation_list = random.sample(
+        uploaded_annotation_list, config["image_subset"]
+    )
 
 
 rule all:
     input:
         uploaded_annotation_list,
+
 
 # Define rule to convert .czi files to .zarr using bioformats2raw
 rule convert_to_zarr:
@@ -69,6 +78,7 @@ rule convert_to_zarr:
         bioformats2raw '{input}' '{output}'
         """
 
+
 # rule convert_to_png:
 #     input:
 #         lif=expand(
@@ -80,4 +90,3 @@ rule convert_to_zarr:
 #         png="results/plast_cell/{folder}/{filename}/i={i}_t={t}_z={z}_c={c}.png",
 #     script:
 #         "scripts/convert_to_png.py"
-
