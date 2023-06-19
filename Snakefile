@@ -1,14 +1,10 @@
 # report: "report/workflow.rst"
-from snakemake.remote.zenodo import RemoteProvider
+from snakemake.remote.zenodo import RemoteProvider,
 import os
 
 from snakemake.remote import AUTO
 
 # from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
-import pandas as pd
-import os
-import dask.dataframe as dd
-import pandas as pd
 
 
 import os
@@ -20,10 +16,10 @@ envvars:
     "BIOSTUDIES_FTP_SERVER",
 
 
-access_token = os.environ["ZENODO_ACCESS_TOKEN"]
+zenodo_access_token = os.environ["ZENODO_ACCESS_TOKEN"]
+deposition_id = 7267108
 
-
-zenodo = RemoteProvider(access_token=access_token)
+zenodo = RemoteProvider(deposition=deposition_id, access_token=zenodo_access_token)
 
 
 CSV_VARIANTS = ["FilteredNuclei", "Image"]
@@ -71,8 +67,7 @@ def aggregate_input_stardist(wildcards):
         "data/cellesce_2d/{images}/projection_XY_16_bit.tif"
     )
     return expand(
-        "analysed/stardist_inference/{images}/labels.png", images_in=images_glob
-    )
+        "analysed/stardist_inference/{images}/labels.png", images_in=images_glob)
 
 
 def aggregate_decompress_images(wildcards):
@@ -84,7 +79,7 @@ def aggregate_decompress_images(wildcards):
     # checkpoints.move_data.get(images_raw=images_raw,images=images,**wildcards)
     return expand(
         "analysed/data/images/temp/{images_raw}/projection_XY_16_bit.chkpt",
-        images_raw=images_raw,
+images_raw=images_raw,
     )
 
 
@@ -161,13 +156,15 @@ checkpoint move_data:
         folder=IMAGES_IN_DIR,
         file="data/cellesce_2d/{images_raw}/projection_XY_16_bit.tif",
     output:
-        checkpoint="analysed/data/images/temp/{images_raw}/projection_XY_16_bit.chkpt",
+        checkpoint_dir = directory("analysed/data/images/temp/{images_raw}/"),
+        checkpoint=touch("analysed/data/images/temp/{images_raw}/projection_XY_16_bit.chkpt"),
     params:
         file_name=lambda wildcards: "analysed/data/images/"
         + (wildcards.images_raw).replace("/", "_").replace(" ", "_")
         + ".tif",
     shell:
         """
+        mkdir -p '{params.checkpoint_dir}'
         cp -n '{input.file}' '{params.file_name}'
         touch '{output.checkpoint}'
         """
@@ -344,12 +341,17 @@ rule upload:
             feature_inclusions=FEATURE_INCLUSIONS,
             csv_variants=CSV_VARIANTS,
         ),
+    params:
+        # access_token=zenodo_access_token,
+        # deposition_id=deposition_id, # replace with your actual deposition ID
     output:
-        # zip_file="results_csv.zip",
+        zip_file=temp("data/results_csv.zip"),
         remote=zenodo.remote("results_csv.zip"),
+        # remote=zenodo.remote("zenodo://{access_token}/{deposition_id}/results_csv.zip"),
     shell:
         """
-        zip {output.remote} {input}
+        zip {output.zip_file} {input}
+        cp {output.remote} {output.zip_file}
         """
 
 
