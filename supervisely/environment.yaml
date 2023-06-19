@@ -1,4 +1,4 @@
-name: supervisely
+name: plast_cell
 channels:
   - anaconda
   - conda-forge
@@ -6,22 +6,34 @@ channels:
   - defaults
   - nvidia
   - ome
+  - pytorch
 dependencies:
   - conda
-  - python=3.8
+  # - python=3.10
   - cudatoolkit
-  - pip=21
+  # - pyqt
+  - python=3.9
+  - numpy
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda
+  - cudatoolkit
+  - matplotlib
   - mamba
-  # - python=3.9
-  - mamba
-  # - pip
+  - pip
   - bioformats
   - jpype1
   - pims
+  - pillow
   - snakemake
   - bioformats2raw
   - napari
+  - python-dotenv
+  - opencv
   - napari-ome-zarr
   - pip:
     - supervisely
     - napari-ome-zarr
+    - cellpose
+    - PyQt5
