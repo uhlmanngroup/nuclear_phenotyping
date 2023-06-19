@@ -1,4 +1,5 @@
 
+import supervisely as sly
 
 rule upload_to_supervisley:
     input:
@@ -10,12 +11,13 @@ rule upload_to_supervisley:
         token=config["supervisely"]["token"],
         workspace_id=config["supervisely"]["workspace_id"],
         workspace_name=config["supervisely"]["workspace_name"],
-        dataset_name=["supervisely"]["dataset"],
+        dataset_name=config["supervisely"]["dataset_name"],
     run:
-        import supervisely as sly
 
         # address = "https://app.supervise.ly/"
         # token = os.environ["API_TOKEN"]
+        
+        breakpoint()
         api = sly.Api(params.address, params.token)
         project = api.project.get_or_create(
             workspace_id=params.workspace_id, name=params.workspace_name
@@ -41,7 +43,7 @@ rule get_mask_from_image:
         token=config["supervisely"]["token"],
         workspace_id=config["supervisely"]["workspace_id"],
         workspace_name=config["supervisely"]["workspace_name"],
-        dataset_name=["supervisely"]["dataset"],
+        dataset_name=config["supervisely"]["dataset_name"],
     run:
         address = params.address
         token = params.token
