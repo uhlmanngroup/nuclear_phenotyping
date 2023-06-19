@@ -1,0 +1,12 @@
+name: unet
+dependencies:
+- tensorflow-gpu
+- cudatoolkit
+- tqdm
+- imageio
+- keras
+- numpy
+- matplotlib
+- scikit-image
+- pip:
+  - -e "../../unet/unet-nuclei"
