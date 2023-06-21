@@ -15,7 +15,7 @@ include: "rules/supervisely.smk"
 include: "rules/convert_to_png.smk"
 
 
-dotenv.load_dotenv()
+# dotenv.load_dotenv()
 # from dotenv import load_dotenv
 pims.bioformats.download_jar(version="6.7.0")
 glob_str = expand(
@@ -60,14 +60,14 @@ rule all:
     input:
         uploaded_annotation_list,
 
-rule convert_to_zarr:
-    conda:
-        "envs/zarr.yaml"
-    input:
-        "data/plast_cell/{filename}.lif",
-    output:
-        directory("results/plast_cell/{filename}.zarr"),
-    shell:
-        """
-        bioformats2raw '{input}' '{output}'
-        """
+# rule convert_to_zarr:
+#     conda:
+#         "envs/zarr.yaml"
+#     input:
+#         "data/plast_cell/{filename}.lif",
+#     output:
+#         directory("results/plast_cell/{filename}.zarr"),
+#     shell:
+#         """
+#         bioformats2raw '{input}' '{output}'
+#         """
