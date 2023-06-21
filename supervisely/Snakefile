@@ -1,18 +1,15 @@
 import pims
 import PIL
 import os
-
 # import supervisely as sly
 from pathlib import Path
 from glob import glob
 from tqdm import tqdm
 import dotenv
-import os
 import random
 
 
 configfile: "config.yaml"
-
 
 include: "rules/supervisely.smk"
 include: "rules/convert_to_png.smk"
@@ -26,13 +23,11 @@ glob_str = expand(
 )[0]
 folders, filenames = glob_wildcards(glob_str)
 
-# breakpoint()
 image_list = []
 
 for folder, filename in zip(folders, filenames):
     # filename = "20230216/NMuMG-mut218_5um_20230213_useless"
     im = pims.Bioformats(glob_str.format(folder=folder, filename=filename))
-    # breakpoint()
     im.iter_axes = "ct"
     # print("Getting metadata")
     for i, frame in enumerate(im):
@@ -41,9 +36,7 @@ for folder, filename in zip(folders, filenames):
         metadata = {"folder": folder, "filename": filename, "i": i, **coords}
         image_list.append(metadata)
     # return image_list
-# breakpoint()
 
-# breakpoint()
 uploaded_annotation_list = [
     expand(
         "results/plast_cell/{folder}/{filename}/i={i}_t={t}_z={z}_c={c}.uploaded",
@@ -64,8 +57,6 @@ rule all:
     input:
         uploaded_annotation_list,
 
-
-# Define rule to convert .czi files to .zarr using bioformats2raw
 rule convert_to_zarr:
     conda:
         "envs/zarr.yaml"
@@ -77,16 +68,3 @@ rule convert_to_zarr:
         """
         bioformats2raw '{input}' '{output}'
         """
-
-
-# rule convert_to_png:
-#     input:
-#         lif=expand(
-#             "{data_dir}/{folder}/{filename}{file_suffix}", allow_missing=True, **config
-#         ),
-#         # metadata="results/plast_cell/{filename}/metadata.json",
-#     output:
-#         # image_dir=dynamic("results/plast_cell/{filename}"),
-#         png="results/plast_cell/{folder}/{filename}/i={i}_t={t}_z={z}_c={c}.png",
-#     script:
-#         "scripts/convert_to_png.py"

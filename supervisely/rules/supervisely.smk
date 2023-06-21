@@ -17,7 +17,6 @@ rule upload_to_supervisley:
         # address = "https://app.supervise.ly/"
         # token = os.environ["API_TOKEN"]
         
-        breakpoint()
         api = sly.Api(params.address, params.token)
         project = api.project.get_or_create(
             workspace_id=params.workspace_id, name=params.workspace_name
