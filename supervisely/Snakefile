@@ -30,13 +30,16 @@ for folder, filename in zip(folders, filenames):
     im = pims.Bioformats(glob_str.format(folder=folder, filename=filename))
     im.iter_axes = "ct"
     # print("Getting metadata")
-    for i, frame in enumerate(im):
-        coords = frame.metadata["coords"]
-        coords["z"] = 0
-        metadata = {"folder": folder, "filename": filename, "i": i, **coords}
-        image_list.append(metadata)
-    # return image_list
-
+    try:
+        for i, frame in enumerate(im):
+            coords = frame.metadata["coords"]
+            coords["z"] = 0
+            metadata = {"folder": folder, "filename": filename, "i": i, **coords}
+            image_list.append(metadata)
+        # return image_list
+    except:
+        print("Error with", filename)
+        continue
 uploaded_annotation_list = [
     expand(
         "results/plast_cell/{folder}/{filename}/i={i}_t={t}_z={z}_c={c}.uploaded",
