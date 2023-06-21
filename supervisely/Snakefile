@@ -28,9 +28,9 @@ image_list = []
 for folder, filename in zip(folders, filenames):
     # filename = "20230216/NMuMG-mut218_5um_20230213_useless"
     im = pims.Bioformats(glob_str.format(folder=folder, filename=filename))
+    try:
     im.iter_axes = "ct"
     # print("Getting metadata")
-    try:
         for i, frame in enumerate(im):
             coords = frame.metadata["coords"]
             coords["z"] = 0
