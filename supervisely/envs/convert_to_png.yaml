@@ -1,31 +1,14 @@
-name: plast_cell
+name: convert_to_png
 channels:
   - anaconda
   - conda-forge
   - bioconda
   - defaults
-  - nvidia
   - ome
-  - pytorch
 dependencies:
-  - conda
-  - python=3.9
-  - numpy
-  - matplotlib
-  - mamba
   - pip
   - bioformats
   - jpype1
   - pims
   - pillow
-  - snakemake
   - bioformats2raw
-  - napari
-  - python-dotenv
-  - opencv
-  - napari-ome-zarr
-  - pip:
-    - supervisely
-    - napari-ome-zarr
-    - cellpose
-    - PyQt5

@@ -1,5 +1,5 @@
-import pims
-import PIL
+# import pims
+# import PIL
 import os
 # import supervisely as sly
 from pathlib import Path
@@ -17,7 +17,7 @@ include: "rules/convert_to_png.smk"
 
 # dotenv.load_dotenv()
 # from dotenv import load_dotenv
-pims.bioformats.download_jar(version="6.7.0")
+# pims.bioformats.download_jar(version="6.7.0")
 glob_str = expand(
     "{data_dir}/{folder}/{filename}{file_suffix}", **config, allow_missing=True
 )[0]

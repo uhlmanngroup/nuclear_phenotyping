@@ -3,6 +3,7 @@ import PIL
 import os
 import PIL.ImageOps
 
+pims.bioformats.download_jar(version="6.7.0")
 
 def save_image_at_frame(path_in, path_out, i):
     ims = pims.Bioformats(path_in)
