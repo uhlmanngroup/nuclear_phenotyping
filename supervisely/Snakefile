@@ -21,29 +21,6 @@ glob_str = expand(
 )[0]
 folders, filenames = glob_wildcards(glob_str)
 
-
-# def get_uploaded_annotations_list(wildcards):
-#     # ck_output = checkpoints.convert_to_pngs.get(**wildcards).output
-#     # return ck_output.folder
-#     breakpoint()
-#     # wildcards = glob_wildcards("results/{folder}/{filename}/i={i}_t={t}_z={z}_c={c}.png")
-#     # # random.sample(zip(*wildcards),config["n_samples"]])
-
-#     # breakpoint()
-#     # uploaded_annotation_list = expand(
-#     #     "results/{folder}/{filename}/i={i}_t={t}_z={z}_c={c}.uploaded",
-#     #     zip,
-#     #     filename=wildcards.filename,
-#     #     folder=wildcards.folder,
-#     #     i=wildcards.i,
-#     #     t=wildcards.t,
-#     #     z=wildcards.z,
-#     #     c=wildcards.c,
-#     # )
-#     # breakpoint()
-#     # return uploaded_annotation_list
-
-
 def upload_subset_annotations(wildcards):
     checkpoints.all_converted.get(**wildcards).output
     wildcards = glob_wildcards(
@@ -57,14 +34,15 @@ def upload_subset_annotations(wildcards):
     return random.Random(42).sample(pngs, config["image_samples"])
     # return sampled_pngs
 
-
 rule all:
     input:
-        expand(
-            "results/{folder}/{filename}.converted.flag",
-            folder=folders,
-            filename=filenames,
-        ),
+        # expand(
+        #     "results/{folder}/{filename}/converted.flag",
+        #     zip,
+        #     folder=folders,
+        #     filename=filenames,
+        # ),
+        "results/converted.flag",
         # get_uploaded_annotations_list,
         upload_subset_annotations,
 
@@ -73,7 +51,7 @@ rule upload_to_supervisley:
     input:
         png="results/{filename}/i={i}_t={t}_z={z}_c={c}.png",
     output:
-        touch("results/supervisely/{filename}/i={i}_t={t}_z={z}_c={c}.uploaded.png"),
+        flag=touch("results/supervisely/{filename}/i={i}_t={t}_z={z}_c={c}.uploaded.png"),
     params:
         address=config["supervisely"]["address"],
         token=config["supervisely"]["token"],
@@ -84,19 +62,23 @@ rule upload_to_supervisley:
         "scripts/upload_to_supervisely.py"
 
 
-rule convert_agg:
-    input:
-        checkpoint=lambda wildcards: checkpoints.convert_to_pngs.get(**wildcards).output,
-        folder=directory("results/{folder}/{filename}"),
-    output:
-        touch("results/{folder}/{filename}.converted.flag"),
+# def convert_agg(wildcards):
+#     breakpoint()
+#     return checkpoints.convert_to_pngs.get(**wildcards).output
+# rule convert_agg:
+#     input:
+#         checkpoint=lambda wildcards: checkpoints.convert_to_pngs.get(**wildcards).output,
+#         # folder=directory("results/{folder}/{filename}"),
+#     output:
+#         # flag=touch("results/{folder}/{filename}/converted.flag"),
 
 
 checkpoint all_converted:
     input:
-        # file_list=get_uploaded_annotations_list,
-        expand(
-            "results/{folder}/{filename}.converted.flag",
+        # checkpoints=lambda wildcards: breakpoint(),
+        all_flags = expand(
+            "results/{folder}/{filename}/converted.flag",
+            zip,
             folder=folders,
             filename=filenames,
         ),
@@ -113,13 +95,14 @@ checkpoint all_converted:
 
 checkpoint convert_to_pngs:
     input:
+        # breakpoints=lambda wildcards: breakpoint(),
         image=expand(
             "{data_dir}/{folder}/{filename}{file_suffix}",
             **config,
             allow_missing=True,
         )[0],
     output:
-        temp(touch("results/{folder}/{filename}/converted.flag")),
-        folder=directory("results/{folder}/{filename}"),
+        flag = temp(touch("results/{folder}/{filename}/converted.flag")),
+        folder = directory("results/{folder}/{filename}"),
     script:
         "scripts/convert_to_pngs.py"
