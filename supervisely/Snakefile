@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from glob import glob
 from tqdm import tqdm
-import dotenv
 import random
 
 
@@ -52,6 +51,8 @@ rule upload_to_supervisley:
         png="results/{filename}/i={i}_t={t}_z={z}_c={c}.png",
     output:
         flag=touch("results/supervisely/{filename}/i={i}_t={t}_z={z}_c={c}.uploaded.png"),
+    conda:
+    	"envs/supervisely.yaml"
     params:
         address=config["supervisely"]["address"],
         token=config["supervisely"]["token"],

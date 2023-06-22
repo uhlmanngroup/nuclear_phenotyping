@@ -1,5 +1,4 @@
 
-import supervisely as sly
 
 # rule upload_to_supervisley:
 #     input:
