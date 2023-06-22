@@ -43,6 +43,7 @@ folders, filenames = glob_wildcards(glob_str)
 #     # breakpoint()
 #     # return uploaded_annotation_list
 
+
 def upload_subset_annotations(wildcards):
     checkpoints.all_converted.get(**wildcards).output
     wildcards = glob_wildcards(
@@ -53,7 +54,7 @@ def upload_subset_annotations(wildcards):
         zip,
         **wildcards._asdict()
     )
-    return random.sample(pngs, config["image_samples"])
+    return random.Random(42).sample(pngs, config["image_samples"])
     # return sampled_pngs
 
 
