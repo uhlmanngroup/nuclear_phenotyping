@@ -19,9 +19,9 @@ def upload_to_supervisley(
     ann_json = {
         "description": "",
         "tags": [
-            {"name": "t", "value": t},
-            {"name": "z", "value": z},
-            {"name": "c", "value": c},
+            {"tag_name": "t", "value": t},
+            {"tag_name": "z", "value": z},
+            {"tag_name": "c", "value": c},
         ],
         # ... other metadata fields as needed ...
     }
