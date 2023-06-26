@@ -14,7 +14,18 @@ def upload_to_supervisley(
     # images = glob("results/plast_cell/**/*.png", recursive=True)
     image_name = f"{filename}/t={t}_z={z}_c={c}"
     # breakpoint()
-    api.image.upload_path(dataset.id, name=image_name, path=input)
+    upload_info = api.image.upload_path(dataset.id, name=image_name, path=input)
+     # Construct the annotations metadata
+    ann_json = {
+        "description": "",
+        "tags": [
+            {"name": "t", "value": t},
+            {"name": "z", "value": z},
+            {"name": "c", "value": c},
+        ],
+        # ... other metadata fields as needed ...
+    }
+    api.annotation.upload_json(upload_info.id, ann_json)
     # api.close()
     return image_name
 
