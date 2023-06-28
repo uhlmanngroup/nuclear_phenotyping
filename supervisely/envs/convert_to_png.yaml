@@ -1,0 +1,14 @@
+name: convert_to_png
+channels:
+  - anaconda
+  - conda-forge
+  - bioconda
+  - defaults
+  - ome
+dependencies:
+  - pip
+  - bioformats
+  - jpype1
+  - pims
+  - pillow
+  - bioformats2raw

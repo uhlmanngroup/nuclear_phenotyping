@@ -1,0 +1,24 @@
+import pims
+import PIL
+import os
+import PIL.ImageOps
+
+pims.bioformats.download_jar(version="6.7.0")
+
+def save_image_at_frame(path_in, path_out, i):
+    ims = pims.Bioformats(path_in)
+    ims.iter_axes = "ct"
+    # frame = ims[int(i)]
+    im = PIL.Image.fromarray(ims[int(i)])
+    # im = im.convert('L') 
+    # im = PIL.ImageOps.equalize(im, mask=None)
+
+    im.save(path_out)
+    print(f"Saving {path_out}")
+
+
+save_image_at_frame(
+                    snakemake.input.lif,
+                    snakemake.output.png,
+                    int(snakemake.wildcards.i)
+                    )

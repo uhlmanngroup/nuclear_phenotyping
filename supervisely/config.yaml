@@ -1,0 +1,10 @@
+# supervisely_address: "https://app.supervise.ly"
+image_subset: 64
+data_dir: "data/CRG"
+file_suffix: ".lif"
+supervisely:
+  address: "https://app.supervise.ly"
+  token:
+  workspace_id: 83434
+  workspace_name: "plast_data"
+  dataset_name: "dataset"

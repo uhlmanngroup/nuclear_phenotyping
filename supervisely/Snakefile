@@ -1,0 +1,109 @@
+import os
+
+from pathlib import Path
+from glob import glob
+from tqdm import tqdm
+import random
+
+
+configfile: "config.yaml"
+
+
+include: "rules/supervisely.smk"
+
+
+# include: "rules/convert_to_png.smk"
+
+
+glob_str = expand(
+    "{data_dir}/{folder}/{filename}{file_suffix}", **config, allow_missing=True
+)[0]
+folders, filenames = glob_wildcards(glob_str)
+
+def upload_subset_annotations(wildcards):
+    checkpoints.all_converted.get(**wildcards).output
+    wildcards = glob_wildcards(
+        "results/{folder}/{filename}/i={i}_t={t}_z={z}_c={c}.png"
+    )
+    pngs = expand(
+        "results/supervisely/{folder}/{filename}/i={i}_t={t}_z={z}_c={c}.uploaded.png",
+        zip,
+        **wildcards._asdict()
+    )
+    return random.Random(42).sample(pngs, config["image_samples"])
+    # return sampled_pngs
+
+rule all:
+    input:
+        # expand(
+        #     "results/{folder}/{filename}/converted.flag",
+        #     zip,
+        #     folder=folders,
+        #     filename=filenames,
+        # ),
+        "results/converted.flag",
+        # get_uploaded_annotations_list,
+        upload_subset_annotations,
+
+
+rule upload_to_supervisley:
+    input:
+        png="results/{filename}/i={i}_t={t}_z={z}_c={c}.png",
+    output:
+        flag=touch("results/supervisely/{filename}/i={i}_t={t}_z={z}_c={c}.uploaded.png"),
+    conda:
+    	"envs/supervisely.yaml"
+    params:
+        address=config["supervisely"]["address"],
+        token=config["supervisely"]["token"],
+        workspace_id=config["supervisely"]["workspace_id"],
+        workspace_name=config["supervisely"]["workspace_name"],
+        dataset_name=config["supervisely"]["dataset_name"],
+    script:
+        "scripts/upload_to_supervisely.py"
+
+
+# def convert_agg(wildcards):
+#     breakpoint()
+#     return checkpoints.convert_to_pngs.get(**wildcards).output
+# rule convert_agg:
+#     input:
+#         checkpoint=lambda wildcards: checkpoints.convert_to_pngs.get(**wildcards).output,
+#         # folder=directory("results/{folder}/{filename}"),
+#     output:
+#         # flag=touch("results/{folder}/{filename}/converted.flag"),
+
+
+checkpoint all_converted:
+    input:
+        # checkpoints=lambda wildcards: breakpoint(),
+        all_flags = expand(
+            "results/{folder}/{filename}/converted.flag",
+            zip,
+            folder=folders,
+            filename=filenames,
+        ),
+    output:
+        touch("results/converted.flag"),
+
+
+# checkpoint upload_annotations:
+#     input:
+#         "results/converted.flag"
+#     output:
+#         touch("results/uploaded.flag")
+
+
+checkpoint convert_to_pngs:
+    input:
+        # breakpoints=lambda wildcards: breakpoint(),
+        image=expand(
+            "{data_dir}/{folder}/{filename}{file_suffix}",
+            **config,
+            allow_missing=True,
+        )[0],
+    output:
+        flag = temp(touch("results/{folder}/{filename}/converted.flag")),
+        folder = directory("results/{folder}/{filename}"),
+    script:
+        "scripts/convert_to_pngs.py"
